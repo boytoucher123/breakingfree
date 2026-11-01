@@ -10,59 +10,60 @@ import org.json.JSONObject
 import java.io.File
 import java.util.UUID
 
-sealed class Prompt(val id: String) {
-    class Single(id: String, val question: String) : Prompt(id)
-    /** A two-column table: each row pairs an answer on the left with its answer on the right. */
-    class Table(id: String, val left: String, val right: String) : Prompt(id)
-}
+enum class QType { TEXT, TABLE }
 
-val PROMPTS: List<Prompt> = listOf(
-    Prompt.Single("today", "How was today?"),
-    Prompt.Single("holds", "What holds me back?"),
-    Prompt.Single("want", "What do I want?"),
-    Prompt.Single("hurting", "Am I hurting anyone?"),
-    Prompt.Single("misery", "Am I adding misery to the world?"),
-    Prompt.Table("want_why", "What do I want?", "Why don't I have it?"),
-    Prompt.Single("decade", "If I die in a decade's time, what's the one thing I must complete before then?"),
-    Prompt.Table("think_true", "What did I think today?", "Is it true?"),
-    Prompt.Single("envy", "The people who you envy, what are they doing that you aren't?"),
-    Prompt.Table("self", "What do I like about myself?", "What don't I like about myself?"),
-    Prompt.Table("others", "What do I like about others?", "What don't I like about others?"),
+/** A question. TABLE questions pair each answer in the left column ([prompt]) with one in the right ([right]). */
+data class Question(val id: String, val type: QType, val prompt: String, val right: String = "")
+
+data class Answer(
+    val question: String, val text: String = "", val rows: List<Pair<String, String>> = emptyList(),
+    val left: String = "", val right: String = "",
 )
-
-data class Answer(val question: String, val text: String = "", val rows: List<Pair<String, String>> = emptyList(),
-                  val left: String = "", val right: String = "")
 
 data class Reflection(val id: String, val timestamp: Long, val answers: List<Answer>)
 
 data class LatticeState(
+    val questions: List<Question> = emptyList(),
     val singles: Map<String, String> = emptyMap(),
     val tables: Map<String, List<Pair<String, String>>> = emptyMap(),
     val entries: List<Reflection> = emptyList(),
 ) {
-    val hasDraft: Boolean
-        get() = singles.values.any { it.isNotBlank() } ||
-            tables.values.any { rows -> rows.any { it.first.isNotBlank() || it.second.isNotBlank() } }
+    fun isAnswered(id: String): Boolean =
+        singles[id]?.isNotBlank() == true ||
+            tables[id].orEmpty().any { it.first.isNotBlank() || it.second.isNotBlank() }
+
+    val answeredCount: Int get() = questions.count { isAnswered(it.id) }
+    val hasDraft: Boolean get() = answeredCount > 0
 }
 
-class LatticeViewModel(app: Application) : AndroidViewModel(app) {
+/**
+ * Everything lives in the app's private files directory, which survives app upgrades:
+ *  - lattice_questions.json : the question set (seeded from assets/lattice_questions.json)
+ *  - lattice_draft.json     : answers in progress
+ *  - lattice_entries.json   : kept reflections
+ */
+class LatticeViewModel(private val app: Application) : AndroidViewModel(app) {
+    private val questionsFile = File(app.filesDir, "lattice_questions.json")
     private val entriesFile = File(app.filesDir, "lattice_entries.json")
     private val draftFile = File(app.filesDir, "lattice_draft.json")
-    private val _state = MutableStateFlow(LatticeState(entries = loadEntries()).let(::withDraft))
+
+    private val _state = MutableStateFlow(
+        withDraft(LatticeState(questions = loadQuestions(), entries = loadEntries()))
+    )
     val state: StateFlow<LatticeState> = _state
 
-    /** Order of questions, reshuffled each time the Lattice is opened (or on request). */
-    private val _order = MutableStateFlow(PROMPTS.shuffled())
-    val order: StateFlow<List<Prompt>> = _order
+    /** Question ids in display order; reshuffled each time the Lattice opens. */
+    private val _order = MutableStateFlow(_state.value.questions.map { it.id }.shuffled())
+    val order: StateFlow<List<String>> = _order
 
-    fun shuffle() { _order.value = PROMPTS.shuffled() }
+    fun shuffle() { _order.value = _state.value.questions.map { it.id }.shuffled() }
+
+    // ---- answers ----
 
     fun setSingle(id: String, text: String) {
         _state.update { it.copy(singles = it.singles + (id to text)) }
         saveDraft()
     }
-
-    fun rows(id: String): List<Pair<String, String>> = _state.value.tables[id].orEmpty().ifEmpty { listOf("" to "") }
 
     fun setCell(id: String, row: Int, left: Boolean, text: String) {
         _state.update { s ->
@@ -79,6 +80,7 @@ class LatticeViewModel(app: Application) : AndroidViewModel(app) {
             val rows = s.tables[id].orEmpty().ifEmpty { listOf("" to "") }
             s.copy(tables = s.tables + (id to rows + ("" to "")))
         }
+        saveDraft()
     }
 
     fun removeRow(id: String, row: Int) {
@@ -94,13 +96,15 @@ class LatticeViewModel(app: Application) : AndroidViewModel(app) {
     fun keep(): Boolean {
         val s = _state.value
         if (!s.hasDraft) return false
-        val answers = PROMPTS.mapNotNull { pr ->
-            when (pr) {
-                is Prompt.Single -> s.singles[pr.id]?.takeIf { it.isNotBlank() }?.let { Answer(pr.question, it.trim()) }
-                is Prompt.Table -> s.tables[pr.id].orEmpty()
+        val answers = s.questions.mapNotNull { q ->
+            when (q.type) {
+                QType.TEXT -> s.singles[q.id]?.takeIf { it.isNotBlank() }?.let { Answer(q.prompt, it.trim()) }
+                QType.TABLE -> s.tables[q.id].orEmpty()
                     .filter { it.first.isNotBlank() || it.second.isNotBlank() }
                     .takeIf { it.isNotEmpty() }
-                    ?.let { rows -> Answer(pr.left, left = pr.left, right = pr.right, rows = rows.map { it.first.trim() to it.second.trim() }) }
+                    ?.let { rows ->
+                        Answer(q.prompt, left = q.prompt, right = q.right, rows = rows.map { it.first.trim() to it.second.trim() })
+                    }
             }
         }
         val entry = Reflection(UUID.randomUUID().toString(), System.currentTimeMillis(), answers)
@@ -115,7 +119,70 @@ class LatticeViewModel(app: Application) : AndroidViewModel(app) {
         saveEntries()
     }
 
+    // ---- question set ----
+
+    fun addQuestion(type: QType, prompt: String, right: String) {
+        val q = Question(UUID.randomUUID().toString(), type, prompt.trim(), if (type == QType.TABLE) right.trim() else "")
+        _state.update { it.copy(questions = it.questions + q) }
+        _order.update { it + q.id }
+        saveQuestions()
+    }
+
+    fun deleteQuestion(id: String) {
+        _state.update { it.copy(questions = it.questions.filter { q -> q.id != id }, singles = it.singles - id, tables = it.tables - id) }
+        _order.update { it - id }
+        saveQuestions()
+        saveDraft()
+    }
+
+    fun restoreDefaultQuestions() {
+        val defaults = parseQuestions(readAsset())
+        _state.update { it.copy(questions = defaults) }
+        shuffle()
+        saveQuestions()
+    }
+
     // ---- persistence ----
+
+    private fun readAsset(): String = app.assets.open("lattice_questions.json").bufferedReader().use { it.readText() }
+
+    private fun parseQuestions(json: String): List<Question> {
+        val arr = JSONArray(json)
+        return (0 until arr.length()).mapNotNull { i ->
+            val o = arr.getJSONObject(i)
+            val prompt = o.optString("prompt").trim()
+            if (prompt.isEmpty()) return@mapNotNull null
+            val type = if (o.optString("type").equals("table", ignoreCase = true)) QType.TABLE else QType.TEXT
+            Question(o.optString("id").ifBlank { UUID.randomUUID().toString() }, type, prompt, o.optString("right"))
+        }
+    }
+
+    private fun loadQuestions(): List<Question> {
+        val fromFile = runCatching { parseQuestions(questionsFile.readText()) }.getOrNull()
+        if (fromFile != null) return fromFile
+        return runCatching { parseQuestions(readAsset()) }.getOrDefault(emptyList()).also { writeQuestions(it) }
+    }
+
+    private fun saveQuestions() = writeQuestions(_state.value.questions)
+
+    private fun writeQuestions(list: List<Question>) {
+        val arr = JSONArray()
+        list.forEach { q ->
+            arr.put(JSONObject().apply {
+                put("id", q.id); put("type", q.type.name.lowercase()); put("prompt", q.prompt)
+                if (q.type == QType.TABLE) put("right", q.right)
+            })
+        }
+        atomicWrite(questionsFile, arr.toString(2))
+    }
+
+    private fun atomicWrite(file: File, text: String) {
+        runCatching {
+            val tmp = File(file.parentFile, file.name + ".tmp")
+            tmp.writeText(text)
+            if (!tmp.renameTo(file)) { file.writeText(text); tmp.delete() }
+        }
+    }
 
     private fun rowsToJson(rows: List<Pair<String, String>>) = JSONArray().apply {
         rows.forEach { put(JSONArray().put(it.first).put(it.second)) }
@@ -129,9 +196,9 @@ class LatticeViewModel(app: Application) : AndroidViewModel(app) {
     private fun saveDraft() {
         val s = _state.value
         val o = JSONObject()
-        o.put("singles", JSONObject(s.singles as Map<*, *>))
+        o.put("singles", JSONObject().apply { s.singles.forEach { (k, v) -> put(k, v) } })
         o.put("tables", JSONObject().apply { s.tables.forEach { (k, v) -> put(k, rowsToJson(v)) } })
-        runCatching { draftFile.writeText(o.toString()) }
+        atomicWrite(draftFile, o.toString())
     }
 
     private fun withDraft(s: LatticeState): LatticeState = runCatching {
@@ -158,11 +225,7 @@ class LatticeViewModel(app: Application) : AndroidViewModel(app) {
                 })
             })
         }
-        runCatching {
-            val tmp = File(entriesFile.parentFile, "lattice_entries.json.tmp")
-            tmp.writeText(arr.toString())
-            tmp.renameTo(entriesFile)
-        }
+        atomicWrite(entriesFile, arr.toString())
     }
 
     private fun loadEntries(): List<Reflection> = runCatching {

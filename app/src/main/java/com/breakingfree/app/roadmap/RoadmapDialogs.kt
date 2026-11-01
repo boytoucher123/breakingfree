@@ -87,10 +87,14 @@ fun NodeDialog(
     val si = siblings.indexOfFirst { it.id == node.id }
     val path = map.path()
     val idx = path.indexOfFirst { it.node.id == node.id }
-    val color = progressColor(if (path.size <= 1) 1f else idx / (path.size - 1f), node.tier)
+    val color = colorAt(idx, path.size, map.endGoalIndex(path), node.tier)
 
     Panel(onDismiss) {
-        MonoLabel(node.tier.label.uppercase() + if (node.done) "  //  CLEARED" else "", color = color)
+        MonoLabel(
+            node.tier.label.uppercase() + (if (node.endGoal) "  //  END GOAL" else "") +
+                (if (node.done) "  //  CLEARED" else ""),
+            color = color,
+        )
         Spacer(Modifier.height(6.dp))
         Text(
             node.title,
@@ -132,8 +136,12 @@ fun NodeDialog(
     if (confirmDelete) {
         ConfirmDialog(
             title = "Erase \"${node.title}\"?",
-            message = if (kids.isNotEmpty()) "Its ${kids.size} inner step(s) will be kept and moved up a level." else
-                "This milestone will be removed from the map.",
+            message = when {
+                node.tier == Tier.MAJOR && kids.isNotEmpty() ->
+                    "This epoch and all ${map.descendants(node.id).size} milestone(s) inside it will be erased."
+                kids.isNotEmpty() -> "Its ${kids.size} inner step(s) will be kept and moved up a level."
+                else -> "This milestone will be removed from the map."
+            },
             confirm = "ERASE",
             onConfirm = { confirmDelete = false; onDelete() },
             onDismiss = { confirmDelete = false },
@@ -148,7 +156,7 @@ fun EditNodeDialog(
     presetParent: String?,
     presetTier: Tier,
     onDismiss: () -> Unit,
-    onSave: (title: String, notes: String, tier: Tier, parentId: String?) -> Unit,
+    onSave: (title: String, notes: String, tier: Tier, parentId: String?, endGoal: Boolean) -> Unit,
 ) {
     val p = LocalPalette.current
     var title by remember { mutableStateOf(existing?.title ?: "") }
@@ -156,9 +164,16 @@ fun EditNodeDialog(
     var tier by remember { mutableStateOf(existing?.tier ?: presetTier) }
     var parentId by remember { mutableStateOf(existing?.let { map.effectiveParent(it)?.id } ?: presetParent) }
     var parentMenu by remember { mutableStateOf(false) }
+    var endGoal by remember { mutableStateOf(existing?.endGoal ?: false) }
 
+    val noMajors = map.nodes.none { it.tier == Tier.MAJOR && it.id != existing?.id }
+    // A major that holds milestones can't be demoted — they'd have nowhere to live.
+    val lockedMajor = existing != null && existing.tier == Tier.MAJOR && map.children(existing.id).isNotEmpty()
+    if (noMajors || lockedMajor) tier = Tier.MAJOR
     val eligible = map.eligibleParents(tier, existing?.id)
-    if (parentId != null && eligible.none { it.id == parentId }) parentId = null
+    if (tier != Tier.MAJOR && eligible.none { it.id == parentId }) {
+        parentId = eligible.firstOrNull { it.tier == Tier.MAJOR }?.id ?: eligible.firstOrNull()?.id
+    }
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = p.accent, unfocusedBorderColor = p.line,
         focusedTextColor = p.text, unfocusedTextColor = p.text, cursorColor = p.accent,
@@ -186,11 +201,29 @@ fun EditNodeDialog(
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TagChip("MAJOR", tier == Tier.MAJOR, { tier = Tier.MAJOR })
-            TagChip("MILESTONE", tier == Tier.REGULAR, { tier = Tier.REGULAR })
-            TagChip("MINOR", tier == Tier.MINOR, { tier = Tier.MINOR })
+            if (!noMajors && !lockedMajor) {
+                TagChip("MILESTONE", tier == Tier.REGULAR, { tier = Tier.REGULAR })
+                TagChip("MINOR", tier == Tier.MINOR, { tier = Tier.MINOR })
+            }
         }
+        Spacer(Modifier.height(4.dp))
+        MonoLabel(
+            when {
+                noMajors -> "THE FIRST STONE MUST BE A MAJOR — AN EPOCH."
+                lockedMajor -> "HOLDS MILESTONES — STAYS A MAJOR."
+                tier == Tier.MAJOR -> "AN EPOCH. A CHAPTER TITLE."
+                tier == Tier.REGULAR -> "MEASURABLE. AN INCOME, A HOUSE, A CAR."
+                else -> "A GROUNDED TASK. SOMETHING YOU CAN DO."
+            },
+            fontSize = 10.sp,
+        )
         Spacer(Modifier.height(14.dp))
-        MonoLabel("GROUPED UNDER")
+        if (tier == Tier.MAJOR) {
+            TagChip(if (endGoal) "◆ THE END GOAL" else "◇ MARK AS THE END GOAL", endGoal, { endGoal = !endGoal })
+            Spacer(Modifier.height(4.dp))
+            MonoLabel("MAJORS AFTER THE END GOAL FALL INTO THE PURPLE BEYOND.", fontSize = 10.sp)
+        } else {
+        MonoLabel("INSIDE")
         Spacer(Modifier.height(6.dp))
         Box {
             Box(
@@ -201,17 +234,12 @@ fun EditNodeDialog(
                     .padding(12.dp)
             ) {
                 Text(
-                    eligible.firstOrNull { it.id == parentId }?.title
-                        ?: if (tier == Tier.MAJOR) "Nothing — majors stand alone"
-                        else if (eligible.isEmpty()) "Nothing — stands independently"
-                        else "Nothing — stands independently ▾",
-                    color = if (parentId == null) p.textDim else p.text,
+                    (eligible.firstOrNull { it.id == parentId }?.title ?: "Choose…") + "  ▾",
+                    color = p.text,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
             DropdownMenu(expanded = parentMenu, onDismissRequest = { parentMenu = false }) {
-                DropdownMenuItem(text = { Text("Nothing — stands independently") },
-                    onClick = { parentId = null; parentMenu = false })
                 eligible.forEach { e ->
                     DropdownMenuItem(
                         text = {
@@ -225,11 +253,13 @@ fun EditNodeDialog(
                 }
             }
         }
+        }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ActionButton("CANCEL", Modifier.weight(1f), onClick = onDismiss)
-            ActionButton("SAVE", Modifier.weight(1f), danger = true, enabled = title.isNotBlank()) {
-                onSave(title, notes, tier, parentId)
+            ActionButton("SAVE", Modifier.weight(1f), danger = true,
+                enabled = title.isNotBlank() && (tier == Tier.MAJOR || parentId != null)) {
+                onSave(title, notes, tier, if (tier == Tier.MAJOR) null else parentId, tier == Tier.MAJOR && endGoal)
             }
         }
     }

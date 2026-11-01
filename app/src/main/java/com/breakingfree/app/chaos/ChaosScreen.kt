@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -116,7 +117,7 @@ fun ChaosScreen(vm: ChaosViewModel = viewModel()) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    ShiftingTitle("Chaos Phase", "CHAOS PHASE", fontSize = 34.sp, startGothic = false)
+                    ShiftingTitle("Chaos Phase", "CHAOS PHASE", fontSize = 34.sp, startGothic = false, textAlign = TextAlign.Start)
                     MonoLabel(
                         if (s.fetchedAt > 0) "INTERCEPT // " + DateUtils.getRelativeTimeSpanString(s.fetchedAt)
                             .toString().uppercase()

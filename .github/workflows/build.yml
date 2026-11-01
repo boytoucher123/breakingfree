@@ -2,8 +2,10 @@ name: Build APK
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -15,11 +17,18 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build debug + release APKs
-        run: ./gradlew --no-daemon assembleDebug assembleRelease
-      - uses: actions/upload-artifact@v4
-        with:
-          name: BreakingFree-apk
-          path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/debug/app-debug.apk
+      - name: Build release APK
+        run: ./gradlew --no-daemon assembleRelease -PbuildNumber=${{ github.run_number }}
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          cp app/build/outputs/apk/release/app-release.apk BreakingFree.apk
+          git log -1 --pretty=%B | sed '/^Co-Authored-By:/d;/^Claude-Session:/d' > notes.md
+          printf '\n---\nInstall **BreakingFree.apk** below. It upgrades in place and keeps your data.\n' >> notes.md
+          gh release create "$TAG" BreakingFree.apk \
+            --target "$GITHUB_SHA" \
+            --title "BREAKING FREE · build ${{ github.run_number }}" \
+            --notes-file notes.md \
+            --latest

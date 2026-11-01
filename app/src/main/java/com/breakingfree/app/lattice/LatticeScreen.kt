@@ -2,9 +2,13 @@ package com.breakingfree.app.lattice
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,17 +26,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -40,17 +51,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,42 +73,74 @@ import com.breakingfree.app.ui.Fonts
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.Palette
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
 private fun questionStyle(size: Int = 22) =
-    TextStyle(fontFamily = Fonts.Quiet, fontStyle = FontStyle.Italic, fontSize = size.sp, lineHeight = (size + 5).sp)
+    TextStyle(fontFamily = Fonts.Quiet, fontStyle = FontStyle.Italic, fontSize = size.sp, lineHeight = (size + 6).sp)
 
 private fun answerStyle(p: Palette) =
-    TextStyle(fontFamily = Fonts.Quiet, fontSize = 19.sp, lineHeight = 24.sp, color = p.text)
+    TextStyle(fontFamily = Fonts.Quiet, fontSize = 20.sp, lineHeight = 25.sp, color = p.text)
+
+private fun roman(n: Int): String {
+    val v = intArrayOf(1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1)
+    val s = arrayOf("M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I")
+    var x = n; val sb = StringBuilder()
+    for (i in v.indices) while (x >= v[i]) { sb.append(s[i]); x -= v[i] }
+    return sb.toString()
+}
 
 @Composable
-private fun QuietLabel(text: String, modifier: Modifier = Modifier) {
+private fun QuietLabel(text: String, modifier: Modifier = Modifier, color: androidx.compose.ui.graphics.Color? = null) {
     val p = LocalPalette.current
     Text(
-        text, modifier = modifier, color = p.textDim,
+        text, modifier = modifier, color = color ?: p.textDim,
         style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 14.sp, letterSpacing = 2.sp),
     )
 }
+
+private const val MODE_QUESTIONS = 0
+private const val MODE_ARCHIVE = 1
+private const val MODE_MANAGE = 2
 
 @Composable
 fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
     val p = LocalPalette.current
     val s by vm.state.collectAsState()
     val order by vm.order.collectAsState()
-    var archive by rememberSaveable { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableIntStateOf(MODE_QUESTIONS) }
     var kept by remember { mutableStateOf(false) }
+
+    // The lattice reacts to you.
+    val scope = rememberCoroutineScope()
+    val energy = remember { Animatable(0f) }
+    val ripple = remember { Animatable(1f) }
+    var lastRipple by remember { mutableLongStateOf(0L) }
+    val resonance by animateFloatAsState(
+        if (s.questions.isEmpty()) 0f else s.answeredCount / s.questions.size.toFloat(), tween(1500), label = "res",
+    )
+    fun react(strong: Boolean = false) {
+        scope.launch {
+            energy.snapTo((energy.value + if (strong) 1f else 0.16f).coerceAtMost(1f))
+            energy.animateTo(0f, tween(if (strong) 3000 else 1700))
+        }
+        val now = System.currentTimeMillis()
+        if (strong || now - lastRipple > 1500) {
+            lastRipple = now
+            scope.launch {
+                ripple.snapTo(0f)
+                ripple.animateTo(1f, tween(if (strong) 2600 else 2000, easing = LinearOutSlowInEasing))
+            }
+        }
+    }
 
     LaunchedEffect(Unit) { vm.shuffle() }
     LaunchedEffect(kept) { if (kept) { delay(2600); kept = false } }
-    BackHandler(enabled = archive) { archive = false }
+    BackHandler(enabled = mode != MODE_QUESTIONS) { mode = MODE_QUESTIONS }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(p.surfaceHigh, p.background, p.background)))
-    ) {
-        LatticeLines(Modifier.fillMaxSize())
+    Box(Modifier.fillMaxSize()) {
+        LatticeBackground(energy.value, ripple.value, resonance, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier
@@ -102,91 +148,166 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
                     .padding(start = 24.dp, end = 8.dp, top = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (archive) {
-                    IconButton(onClick = { archive = false }) {
+                if (mode != MODE_QUESTIONS) {
+                    IconButton(onClick = { mode = MODE_QUESTIONS }) {
                         Icon(Icons.Filled.ArrowBack, "Back", tint = p.textDim)
                     }
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (archive) "What was kept" else "The Lattice",
-                        style = questionStyle(36), color = p.text,
+                        when (mode) {
+                            MODE_ARCHIVE -> "What was kept"
+                            MODE_MANAGE -> "The Questions"
+                            else -> "The Lattice"
+                        },
+                        style = questionStyle(34), color = p.text,
                     )
-                    QuietLabel(if (archive) "${s.entries.size} reflections" else "quiet questions. no one is watching.")
+                    QuietLabel(
+                        when (mode) {
+                            MODE_ARCHIVE -> "${s.entries.size} reflections"
+                            MODE_MANAGE -> "${s.questions.size} threads in the lattice"
+                            else -> "connect. one question at a time."
+                        }
+                    )
                 }
-                if (!archive) {
+                if (mode == MODE_QUESTIONS) {
                     IconButton(onClick = vm::shuffle) { Icon(Icons.Filled.Refresh, "Shuffle", tint = p.textDim) }
-                    IconButton(onClick = { archive = true }) { Icon(Icons.Filled.List, "Saved reflections", tint = p.accent) }
+                    IconButton(onClick = { mode = MODE_ARCHIVE }) { Icon(Icons.Filled.List, "Kept reflections", tint = p.textDim) }
+                    IconButton(onClick = { mode = MODE_MANAGE }) { Icon(Icons.Filled.Settings, "Edit questions", tint = p.textDim) }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            if (archive) Archive(s.entries, vm::deleteEntry)
-            else Questions(vm, s, order, onKeep = { if (vm.keep()) kept = true })
+            Spacer(Modifier.height(4.dp))
+            when (mode) {
+                MODE_ARCHIVE -> Archive(s.entries, vm::deleteEntry)
+                MODE_MANAGE -> ManageQuestions(vm, s.questions)
+                else -> QuestionPager(vm, s, order, onReact = { react() },
+                    onKeep = { if (vm.keep()) { kept = true; react(strong = true) } })
+            }
         }
         AnimatedVisibility(
             kept, enter = fadeIn(), exit = fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+            modifier = Modifier.align(Alignment.Center),
         ) {
             Box(
                 Modifier
                     .border(1.dp, p.accentDim)
-                    .background(p.surface)
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
-            ) { Text("kept.", style = questionStyle(18), color = p.text) }
+                    .background(p.surface.copy(alpha = 0.9f))
+                    .padding(horizontal = 26.dp, vertical = 14.dp)
+            ) { Text("kept. the lattice remembers.", style = questionStyle(20), color = p.text) }
         }
     }
 }
 
 @Composable
-private fun LatticeLines(modifier: Modifier) {
+private fun QuestionPager(
+    vm: LatticeViewModel,
+    s: LatticeState,
+    order: List<String>,
+    onReact: () -> Unit,
+    onKeep: () -> Unit,
+) {
     val p = LocalPalette.current
-    Canvas(modifier) {
-        val step = 64.dp.toPx()
-        val c = p.line.copy(alpha = 0.35f)
-        var x = -size.height
-        while (x < size.width) {
-            drawLine(c, Offset(x, 0f), Offset(x + size.height, size.height), 1f)
-            drawLine(c, Offset(x + size.height, 0f), Offset(x, size.height), 1f)
-            x += step
+    val byId = remember(s.questions) { s.questions.associateBy { it.id } }
+    val ids = order.filter { it in byId }
+    if (ids.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("the lattice is empty.\nadd questions with the gear above.", style = questionStyle(22),
+                color = p.textDim, textAlign = TextAlign.Center)
         }
+        return
     }
-}
+    val pager = rememberPagerState { ids.size }
+    val scope = rememberCoroutineScope()
 
-@Composable
-private fun Questions(vm: LatticeViewModel, s: LatticeState, order: List<Prompt>, onKeep: () -> Unit) {
-    val p = LocalPalette.current
     Column(
         Modifier
             .fillMaxSize()
             .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
     ) {
-        order.forEach { prompt ->
-            Spacer(Modifier.height(26.dp))
-            when (prompt) {
-                is Prompt.Single -> {
-                    Text(prompt.question, style = questionStyle(), color = p.text)
-                    Spacer(Modifier.height(10.dp))
-                    QuietBox(s.singles[prompt.id].orEmpty(), { vm.setSingle(prompt.id, it) }, Modifier.fillMaxWidth(), 84)
+        HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), key = { ids.getOrElse(it) { "x$it" } }) { page ->
+            val q = byId[ids.getOrNull(page)] ?: return@HorizontalPager
+            Box(Modifier.fillMaxSize()) {
+                Column(
+                    Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 28.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val answered = s.isAnswered(q.id)
+                    val qColor by animateColorAsState(if (answered) p.accent else p.text, tween(1200), label = "q")
+                    QuietLabel("— ${roman(page + 1)} —", color = if (answered) p.accent else p.textDim)
+                    Spacer(Modifier.height(14.dp))
+                    if (q.type == QType.TEXT) {
+                        Text(q.prompt, style = questionStyle(30), color = qColor, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(26.dp))
+                        QuietBox(s.singles[q.id].orEmpty(), { vm.setSingle(q.id, it); onReact() }, Modifier.fillMaxWidth(), 170)
+                    } else {
+                        Text(q.prompt, style = questionStyle(26), color = qColor, textAlign = TextAlign.Center)
+                        QuietLabel("and", Modifier.padding(vertical = 4.dp))
+                        Text(q.right, style = questionStyle(26), color = qColor, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(22.dp))
+                        TableQuestion(vm, q, s.tables[q.id].orEmpty().ifEmpty { listOf("" to "") }, onReact)
+                    }
                 }
-                is Prompt.Table -> TableQuestion(vm, prompt, s.tables[prompt.id].orEmpty().ifEmpty { listOf("" to "") })
             }
         }
-        Spacer(Modifier.height(36.dp))
-        Box(
+
+        // navigation
+        Row(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { scope.launch { pager.animateScrollToPage((pager.currentPage - 1).coerceAtLeast(0)) } },
+                enabled = pager.currentPage > 0,
+            ) { Icon(Icons.Filled.KeyboardArrowLeft, "Previous", tint = if (pager.currentPage > 0) p.text else p.line) }
+            Row(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (ids.size <= 24) {
+                    ids.forEachIndexed { i, id ->
+                        val current = i == pager.currentPage
+                        val done = s.isAnswered(id)
+                        Box(
+                            Modifier
+                                .padding(horizontal = 3.dp)
+                                .size(if (current) 9.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(if (done) p.accent else if (current) p.text.copy(alpha = 0.6f) else p.line)
+                                .clickable { scope.launch { pager.animateScrollToPage(i) } }
+                        )
+                    }
+                } else {
+                    QuietLabel("${pager.currentPage + 1} of ${ids.size}")
+                }
+            }
+            IconButton(
+                onClick = { scope.launch { pager.animateScrollToPage((pager.currentPage + 1).coerceAtMost(ids.size - 1)) } },
+                enabled = pager.currentPage < ids.size - 1,
+            ) { Icon(Icons.Filled.KeyboardArrowRight, "Next", tint = if (pager.currentPage < ids.size - 1) p.text else p.line) }
+        }
+        Box(
+            Modifier
+                .padding(horizontal = 28.dp, vertical = 10.dp)
+                .fillMaxWidth()
                 .border(1.dp, if (s.hasDraft) p.accent else p.line)
+                .background(p.background.copy(alpha = 0.55f))
                 .clickable(enabled = s.hasDraft, onClick = onKeep)
-                .padding(vertical = 14.dp),
+                .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text("keep these thoughts", style = questionStyle(20), color = if (s.hasDraft) p.accent else p.textDim)
+            Text(
+                if (s.hasDraft) "keep these thoughts  ·  ${s.answeredCount} answered" else "keep these thoughts",
+                style = questionStyle(19), color = if (s.hasDraft) p.accent else p.textDim,
+            )
         }
-        Spacer(Modifier.height(10.dp))
-        QuietLabel("drafts stay here until you keep them.", Modifier.align(Alignment.CenterHorizontally))
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(6.dp))
     }
 }
 
@@ -200,35 +321,33 @@ private fun QuietBox(value: String, onChange: (String) -> Unit, modifier: Modifi
         cursorBrush = SolidColor(p.accent),
         modifier = modifier
             .heightIn(min = minHeight.dp)
-            .border(1.dp, p.line)
-            .background(p.surface.copy(alpha = 0.55f))
-            .padding(12.dp),
+            .border(1.dp, if (value.isNotBlank()) p.accentDim else p.line)
+            .background(p.background.copy(alpha = 0.6f))
+            .padding(14.dp),
     )
 }
 
 @Composable
-private fun TableQuestion(vm: LatticeViewModel, prompt: Prompt.Table, rows: List<Pair<String, String>>) {
+private fun TableQuestion(vm: LatticeViewModel, q: Question, rows: List<Pair<String, String>>, onReact: () -> Unit) {
     val p = LocalPalette.current
-    Column(Modifier.fillMaxWidth().border(1.dp, p.line)) {
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(p.surfaceHigh.copy(alpha = 0.6f))) {
-            Text(prompt.left, style = questionStyle(19), color = p.text,
-                modifier = Modifier.weight(1f).padding(12.dp))
+    Column(Modifier.fillMaxWidth().border(1.dp, p.line).background(p.background.copy(alpha = 0.6f))) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(p.surfaceHigh.copy(alpha = 0.5f))) {
+            Text(q.prompt, style = questionStyle(17), color = p.textDim, modifier = Modifier.weight(1f).padding(10.dp))
             Box(Modifier.width(1.dp).fillMaxHeight().background(p.line))
-            Text(prompt.right, style = questionStyle(19), color = p.text,
-                modifier = Modifier.weight(1f).padding(12.dp))
+            Text(q.right, style = questionStyle(17), color = p.textDim, modifier = Modifier.weight(1f).padding(10.dp))
         }
         rows.forEachIndexed { i, (l, r) ->
             Box(Modifier.fillMaxWidth().height(1.dp).background(p.line))
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 BasicTextField(
-                    value = l, onValueChange = { vm.setCell(prompt.id, i, true, it) },
+                    value = l, onValueChange = { vm.setCell(q.id, i, true, it); onReact() },
                     textStyle = answerStyle(p), cursorBrush = SolidColor(p.accent),
                     modifier = Modifier.weight(1f).heightIn(min = 64.dp).padding(12.dp),
                 )
                 Box(Modifier.width(1.dp).fillMaxHeight().background(p.line))
                 Box(Modifier.weight(1f)) {
                     BasicTextField(
-                        value = r, onValueChange = { vm.setCell(prompt.id, i, false, it) },
+                        value = r, onValueChange = { vm.setCell(q.id, i, false, it); onReact() },
                         textStyle = answerStyle(p), cursorBrush = SolidColor(p.accent),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
                             .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 28.dp),
@@ -239,8 +358,8 @@ private fun TableQuestion(vm: LatticeViewModel, prompt: Prompt.Table, rows: List
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(6.dp)
-                                .width(16.dp)
-                                .clickable { vm.removeRow(prompt.id, i) },
+                                .size(16.dp)
+                                .clickable { vm.removeRow(q.id, i) },
                         )
                     }
                 }
@@ -252,10 +371,125 @@ private fun TableQuestion(vm: LatticeViewModel, prompt: Prompt.Table, rows: List
             style = questionStyle(16), color = p.accent,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { vm.addRow(prompt.id) }
+                .clickable { vm.addRow(q.id) }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
     }
+}
+
+@Composable
+private fun ManageQuestions(vm: LatticeViewModel, questions: List<Question>) {
+    val p = LocalPalette.current
+    var toDelete by remember { mutableStateOf<Question?>(null) }
+    var confirmRestore by remember { mutableStateOf(false) }
+    var type by rememberSaveable { mutableStateOf(QType.TEXT) }
+    var prompt by rememberSaveable { mutableStateOf("") }
+    var right by rememberSaveable { mutableStateOf("") }
+    val canAdd = prompt.isNotBlank() && (type == QType.TEXT || right.isNotBlank())
+
+    LazyColumn(
+        Modifier.fillMaxSize().imePadding(),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(questions, key = { it.id }) { q ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, p.line)
+                    .background(p.background.copy(alpha = 0.6f))
+                    .padding(start = 14.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    QuietLabel(if (q.type == QType.TABLE) "table" else "text box", color = p.accentDim)
+                    Text(
+                        if (q.type == QType.TABLE) "${q.prompt}  →  ${q.right}" else q.prompt,
+                        style = questionStyle(18), color = p.text,
+                    )
+                }
+                IconButton(onClick = { toDelete = q }) { Icon(Icons.Filled.Close, "Delete question", tint = p.textDim) }
+            }
+        }
+        item {
+            Spacer(Modifier.height(14.dp))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, p.accentDim)
+                    .background(p.surface.copy(alpha = 0.75f))
+                    .padding(16.dp)
+            ) {
+                Text("a new thread", style = questionStyle(22), color = p.text)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FormatChip("text box", type == QType.TEXT) { type = QType.TEXT }
+                    FormatChip("table", type == QType.TABLE) { type = QType.TABLE }
+                }
+                Spacer(Modifier.height(12.dp))
+                QuietLabel(if (type == QType.TABLE) "left column question" else "question")
+                Spacer(Modifier.height(4.dp))
+                QuietBox(prompt, { prompt = it }, Modifier.fillMaxWidth(), 50)
+                if (type == QType.TABLE) {
+                    Spacer(Modifier.height(10.dp))
+                    QuietLabel("right column question")
+                    Spacer(Modifier.height(4.dp))
+                    QuietBox(right, { right = it }, Modifier.fillMaxWidth(), 50)
+                }
+                Spacer(Modifier.height(14.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, if (canAdd) p.accent else p.line)
+                        .clickable(enabled = canAdd) {
+                            vm.addQuestion(type, prompt, right)
+                            prompt = ""; right = ""
+                        }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("weave it in", style = questionStyle(18), color = if (canAdd) p.accent else p.textDim) }
+            }
+        }
+        item {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "restore the default questions",
+                style = questionStyle(16), color = p.textDim,
+                modifier = Modifier.fillMaxWidth().clickable { confirmRestore = true }.padding(vertical = 10.dp),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(40.dp))
+        }
+    }
+    toDelete?.let { q ->
+        ConfirmDialog(
+            title = "Remove this question?",
+            message = "\"${q.prompt}\" will leave the lattice. Reflections you've already kept stay as they are.",
+            confirm = "REMOVE",
+            onConfirm = { vm.deleteQuestion(q.id); toDelete = null },
+            onDismiss = { toDelete = null },
+        )
+    }
+    if (confirmRestore) {
+        ConfirmDialog(
+            title = "Restore the default questions?",
+            message = "Your question list will be replaced with the originals. Kept reflections are not affected.",
+            confirm = "RESTORE",
+            onConfirm = { vm.restoreDefaultQuestions(); confirmRestore = false },
+            onDismiss = { confirmRestore = false },
+        )
+    }
+}
+
+@Composable
+private fun FormatChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    Box(
+        Modifier
+            .border(1.dp, if (selected) p.accent else p.line)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) { Text(text, style = questionStyle(16), color = if (selected) p.accent else p.textDim) }
 }
 
 @Composable
@@ -280,7 +514,7 @@ private fun Archive(entries: List<Reflection>, onDelete: (String) -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .border(1.dp, if (open) p.accentDim else p.line)
-                    .background(p.surface.copy(alpha = 0.7f))
+                    .background(p.background.copy(alpha = 0.7f))
                     .clickable { expanded = if (open) null else e.id }
                     .padding(16.dp)
             ) {

@@ -1,0 +1,13 @@
+[
+  { "id": "today",      "type": "text",  "prompt": "How was today?" },
+  { "id": "holds",      "type": "text",  "prompt": "What holds me back?" },
+  { "id": "want",       "type": "text",  "prompt": "What do I want?" },
+  { "id": "hurting",    "type": "text",  "prompt": "Am I hurting anyone?" },
+  { "id": "misery",     "type": "text",  "prompt": "Am I adding misery to the world?" },
+  { "id": "want_why",   "type": "table", "prompt": "What do I want?", "right": "Why don't I have it?" },
+  { "id": "decade",     "type": "text",  "prompt": "If I die in a decade's time, what's the one thing I must complete before then?" },
+  { "id": "think_true", "type": "table", "prompt": "What did I think today?", "right": "Is it true?" },
+  { "id": "envy",       "type": "text",  "prompt": "The people who you envy, what are they doing that you aren't?" },
+  { "id": "self",       "type": "table", "prompt": "What do I like about myself?", "right": "What don't I like about myself?" },
+  { "id": "others",     "type": "table", "prompt": "What do I like about others?", "right": "What don't I like about others?" }
+]

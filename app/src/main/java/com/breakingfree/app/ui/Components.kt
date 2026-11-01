@@ -1,6 +1,21 @@
 package com.breakingfree.app.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,18 +43,45 @@ import com.breakingfree.app.R
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
+/** The coin, spinning on its vertical axis like it was just flipped into the air. */
 @Composable
-fun FistLogo(size: Dp, modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(R.drawable.ic_logo),
-        contentDescription = "Breaking Free logo",
-        modifier = modifier.size(size),
+fun SpinningCoin(size: Dp, modifier: Modifier = Modifier, periodMs: Int = 4200) {
+    val angle by rememberInfiniteTransition(label = "coin").animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(periodMs, easing = LinearEasing), RepeatMode.Restart),
+        label = "coin",
     )
+    val density = LocalDensity.current
+    val rad = Math.toRadians(angle.toDouble())
+    val facing = kotlin.math.abs(kotlin.math.cos(rad)).toFloat()
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        // Coin edge: a dark sliver that shows when the face turns away.
+        Box(
+            Modifier
+                .size(width = size * 0.06f, height = size * 0.94f)
+                .graphicsLayer { alpha = (1f - facing).coerceIn(0f, 1f) }
+                .background(Color(0xFF3A0006), RoundedCornerShape(50))
+        )
+        Image(
+            painter = painterResource(R.drawable.ic_coin),
+            contentDescription = "BREAKING FREE coin",
+            modifier = Modifier
+                .size(size)
+                .graphicsLayer {
+                    rotationY = angle
+                    cameraDistance = 14f * density.density
+                    // Keep the back face reading the right way round.
+                    if (angle in 90f..270f) scaleX = -1f
+                    alpha = 0.55f + 0.45f * facing
+                },
+        )
+    }
 }
 
 /**
- * A title that periodically convulses between gothic script and the oppressive
- * technical face, with a brief red/white chromatic glitch while it switches.
+ * A title that convulses between gothic script and the oppressive technical face.
+ * Between full swaps it twitches with smaller chromatic glitches. Both faces are laid out
+ * (one invisibly) so the title always occupies the same space and nothing around it moves.
  */
 @Composable
 fun ShiftingTitle(
@@ -53,34 +95,56 @@ fun ShiftingTitle(
     textAlign: TextAlign = TextAlign.Center,
 ) {
     var gothic by remember { mutableStateOf(startGothic) }
-    var glitch by remember { mutableStateOf(false) }
+    var glitch by remember { mutableIntStateOf(0) } // 0 = clean, otherwise a seed for the jitter
     LaunchedEffect(Unit) {
+        launch {
+            while (true) {
+                delay(Random.nextLong(900, 2600))
+                repeat(Random.nextInt(1, 4)) {
+                    glitch = Random.nextInt(1, Int.MAX_VALUE)
+                    delay(Random.nextLong(40, 120))
+                    glitch = 0
+                    delay(Random.nextLong(30, 110))
+                }
+            }
+        }
         while (true) {
-            delay(Random.nextLong(3200, 6500))
-            glitch = true
+            delay(Random.nextLong(4200, 7800))
             repeat(5) {
+                glitch = Random.nextInt(1, Int.MAX_VALUE)
                 delay(Random.nextLong(40, 110))
                 gothic = !gothic
             }
             delay(90)
-            glitch = false
+            glitch = 0
         }
     }
+    val gothicStyle = TextStyle(fontFamily = Fonts.Gothic, fontSize = fontSize * 1.05f, textAlign = textAlign)
+    val techStyle = TextStyle(fontFamily = Fonts.Oppressive, fontSize = fontSize, letterSpacing = 2.sp, textAlign = textAlign)
     val text = if (gothic) gothicText else technicalText
-    val style = TextStyle(
-        fontFamily = if (gothic) Fonts.Gothic else Fonts.Oppressive,
-        fontSize = if (gothic) fontSize * 1.05f else fontSize,
-        letterSpacing = if (gothic) 0.sp else 2.sp,
-        textAlign = textAlign,
-    )
-    Box(modifier) {
-        if (glitch) {
-            Text(text, style = style, color = glitchColor.copy(alpha = 0.8f), maxLines = 1,
-                modifier = Modifier.padding(start = 3.dp))
-            Text(text, style = style, color = Color.White.copy(alpha = 0.35f), maxLines = 1,
-                modifier = Modifier.padding(end = 3.dp, top = 1.dp))
+    val style = if (gothic) gothicStyle else techStyle
+    val align = when (textAlign) {
+        TextAlign.Start, TextAlign.Left -> Alignment.CenterStart
+        TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
+        else -> Alignment.Center
+    }
+    Box(modifier, contentAlignment = align) {
+        // Space reservation: the larger of the two faces decides the size, always.
+        Text(gothicText, style = gothicStyle, maxLines = 1, softWrap = false, modifier = Modifier.alpha(0f))
+        Text(technicalText, style = techStyle, maxLines = 1, softWrap = false, modifier = Modifier.alpha(0f))
+        if (glitch != 0) {
+            val r = Random(glitch)
+            val dx = r.nextInt(2, 7).dp
+            val dy = r.nextInt(-2, 3).dp
+            Text(text, style = style, color = glitchColor.copy(alpha = 0.85f), maxLines = 1, softWrap = false,
+                modifier = Modifier.offset(x = dx, y = dy))
+            Text(text, style = style, color = Color.White.copy(alpha = 0.3f), maxLines = 1, softWrap = false,
+                modifier = Modifier.offset(x = -dx, y = -dy))
+            Text(text, style = style, color = color, maxLines = 1, softWrap = false,
+                modifier = Modifier.offset(x = r.nextInt(-2, 3).dp))
+        } else {
+            Text(text, style = style, color = color, maxLines = 1, softWrap = false)
         }
-        Text(text, style = style, color = color, maxLines = 1)
     }
 }
 

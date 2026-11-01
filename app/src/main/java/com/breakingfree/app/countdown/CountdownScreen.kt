@@ -33,7 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.breakingfree.app.ui.FistLogo
+import com.breakingfree.app.ui.SpinningCoin
 import com.breakingfree.app.ui.Fonts
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
@@ -98,9 +98,9 @@ fun CountdownScreen() {
                 .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            FistLogo(96.dp, Modifier.border(1.dp, p.accent))
+            SpinningCoin(150.dp)
             Spacer(Modifier.height(18.dp))
-            ShiftingTitle("Breaking Free", "BREAKING FREE", fontSize = 40.sp)
+            ShiftingTitle("BREAKING FREE", "BREAKING FREE", fontSize = 31.sp)
             Spacer(Modifier.height(4.dp))
             MonoLabel("T-MINUS // ANNO DOMINI MMXXX", color = p.accent)
             Spacer(Modifier.height(28.dp))

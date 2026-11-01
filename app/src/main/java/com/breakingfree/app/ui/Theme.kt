@@ -52,14 +52,14 @@ val RedPalette = Palette(
 )
 
 val BluePalette = Palette(
-    background = Color(0xFF060A12),
-    surface = Color(0xFF0C1322),
-    surfaceHigh = Color(0xFF121C31),
-    accent = Color(0xFF7FA6DE),
-    accentDim = Color(0xFF2D4670),
-    text = Color(0xFFD3DEEF),
-    textDim = Color(0xFF7D8DA8),
-    line = Color(0xFF1D2B45),
+    background = Color(0xFF040A18),
+    surface = Color(0xFF0A1428),
+    surfaceHigh = Color(0xFF0F1C38),
+    accent = Color(0xFF5C8FE0),
+    accentDim = Color(0xFF26457A),
+    text = Color(0xFF9CB4DA),
+    textDim = Color(0xFF5A6E92),
+    line = Color(0xFF1A2B4C),
 )
 
 val LocalPalette = staticCompositionLocalOf { RedPalette }

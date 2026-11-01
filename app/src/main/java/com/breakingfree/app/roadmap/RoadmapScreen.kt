@@ -90,12 +90,29 @@ fun tierBoost(tier: Tier): Float = when (tier) {
     Tier.MAJOR -> 0.42f
 }
 
+private val BEYOND_PALE = Color(0xFFD9C2FF)
+private val BEYOND_VIOLET = Color(0xFF9B30FF)
+private val BEYOND_DEEP = Color(0xFF5A0FA0)
+private val BEYOND_HIGHLIGHT = Color(0xFFE7D4FF)
+
 /** Colour by proximity to the end goal (t in 0..1), brightened by tier. */
 fun progressColor(t: Float, tier: Tier): Color {
     val e = t.coerceIn(0f, 1f).pow(1.15f)
     val base = if (e < 0.5f) lerp(ORIGIN_RED, MID_RED, e * 2f) else lerp(MID_RED, GOAL_WHITE, (e - 0.5f) * 2f)
     return lerp(base, Color.White, tierBoost(tier))
 }
+
+/** Past the end goal: pale violet sinking into deep, sinister purple (u in 0..1). */
+fun beyondColor(u: Float, tier: Tier): Color {
+    val e = u.coerceIn(0f, 1f)
+    val base = if (e < 0.4f) lerp(BEYOND_PALE, BEYOND_VIOLET, e / 0.4f) else lerp(BEYOND_VIOLET, BEYOND_DEEP, (e - 0.4f) / 0.6f)
+    return lerp(base, BEYOND_HIGHLIGHT, tierBoost(tier) * 0.9f)
+}
+
+/** Colour for path position [i] of [n], where [goal] is the end goal's index. */
+fun colorAt(i: Int, n: Int, goal: Int, tier: Tier): Color =
+    if (i <= goal) progressColor(if (goal <= 0) 1f else i / goal.toFloat(), tier)
+    else beyondColor(if (n - 1 - goal <= 1) 1f else (i - goal - 1) / (n - 2f - goal), tier)
 
 fun radiusFor(tier: Tier): Float = when (tier) {
     Tier.MINOR -> 13f
@@ -115,17 +132,22 @@ private fun roman(n: Int): String {
 
 private data class Placed(val pn: PathNode, val x: Float, val y: Float, val r: Float, val color: Color)
 private data class Zone(val number: Int, val title: String, val top: Float, val bottom: Float, val color: Color)
-private data class MapLayout(val height: Float, val placed: List<Placed>, val zones: List<Zone>)
+private data class MapLayout(
+    val height: Float, val placed: List<Placed>, val zones: List<Zone>, val goal: Int, val beyondFrom: Float?,
+)
+
+private const val BEYOND_GAP = 190f
 
 private fun computeLayout(map: Roadmap, path: List<PathNode>, width: Float, viewport: Float): MapLayout {
-    if (path.isEmpty()) return MapLayout(viewport, emptyList(), emptyList())
+    if (path.isEmpty()) return MapLayout(viewport, emptyList(), emptyList(), 0, null)
+    val goal = map.endGoalIndex(path)
     val gap = 58f
     val topPad = 130f
     val bottomPad = 120f
     val n = path.size
     val rs = path.map { radiusFor(it.node.tier) }
     val cum = FloatArray(n)
-    for (i in 1 until n) cum[i] = cum[i - 1] + rs[i - 1] + rs[i] + gap
+    for (i in 1 until n) cum[i] = cum[i - 1] + rs[i - 1] + rs[i] + gap + if (i == goal + 1) BEYOND_GAP else 0f
     val content = bottomPad + rs[0] + cum[n - 1] + rs[n - 1] + topPad
     val height = maxOf(content, viewport)
     val baseY = height - bottomPad - rs[0]
@@ -133,8 +155,7 @@ private fun computeLayout(map: Roadmap, path: List<PathNode>, width: Float, view
     val amp = width * 0.24f
     val placed = path.mapIndexed { i, pn ->
         val x = if (pn.node.tier == Tier.MAJOR) cx else cx + amp * sin(i * 0.95f + 0.6f)
-        val t = if (n <= 1) 1f else i / (n - 1f)
-        Placed(pn, x, baseY - cum[i], rs[i], progressColor(t, pn.node.tier))
+        Placed(pn, x, baseY - cum[i], rs[i], colorAt(i, n, goal, pn.node.tier))
     }
     // Zones: every top-level node that gathers others beneath it.
     val zones = ArrayList<Zone>()
@@ -149,7 +170,8 @@ private fun computeLayout(map: Roadmap, path: List<PathNode>, width: Float, view
             }
         }
     }
-    return MapLayout(height, placed, zones)
+    val beyondFrom = if (goal < n - 1) placed[goal].y - placed[goal].r - 120f else null
+    return MapLayout(height, placed, zones, goal, beyondFrom)
 }
 
 // ---------- screen ----------
@@ -165,6 +187,7 @@ fun RoadmapScreen(vm: RoadmapViewModel = viewModel()) {
     var editing by remember { mutableStateOf<EditRequest?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var confirmRestore by remember { mutableStateOf(false) }
 
     val total = map.nodes.size
     val cleared = map.nodes.count { it.done }
@@ -177,13 +200,19 @@ fun RoadmapScreen(vm: RoadmapViewModel = viewModel()) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                ShiftingTitle("Roadmap", "ROADMAP", fontSize = 34.sp)
+                ShiftingTitle("Roadmap", "ROADMAP", fontSize = 34.sp, textAlign = TextAlign.Start)
                 MonoLabel("$cleared / $total CLEARED", color = p.accent)
             }
             IconButton(onClick = { outlineMode = !outlineMode }) {
                 Icon(if (outlineMode) Icons.Filled.Place else Icons.Filled.List, "Toggle view", tint = p.text)
             }
-            IconButton(onClick = { editing = EditRequest(null) }) {
+            IconButton(onClick = {
+                val path = map.path()
+                val here = path.getOrNull(map.currentIndex())?.node
+                val major = here?.let { map.majorOf(it) }
+                editing = if (major == null) EditRequest(null, presetTier = Tier.MAJOR)
+                else EditRequest(null, presetParent = major.id, presetTier = Tier.MINOR)
+            }) {
                 Icon(Icons.Filled.Add, "Add milestone", tint = p.accent)
             }
             Box {
@@ -191,8 +220,8 @@ fun RoadmapScreen(vm: RoadmapViewModel = viewModel()) {
                     Icon(Icons.Filled.MoreVert, "More", tint = p.textDim)
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { MonoLabel("LOAD EXAMPLE ROADMAP", color = p.text) },
-                        onClick = { menuOpen = false; vm.loadExample() })
+                    DropdownMenuItem(text = { MonoLabel("RESTORE DEFAULTS", color = p.text) },
+                        onClick = { menuOpen = false; confirmRestore = true })
                     DropdownMenuItem(text = { MonoLabel("CLEAR ENTIRE ROADMAP", color = p.accent) },
                         onClick = { menuOpen = false; confirmClear = true })
                 }
@@ -233,11 +262,21 @@ fun RoadmapScreen(vm: RoadmapViewModel = viewModel()) {
             presetParent = req.presetParent,
             presetTier = req.presetTier,
             onDismiss = { editing = null },
-            onSave = { title, notes, tier, parent ->
-                if (req.node == null) vm.add(title, notes, tier, parent)
-                else vm.update(req.node.copy(title = title.trim(), notes = notes.trim(), tier = tier, parentId = parent))
+            onSave = { title, notes, tier, parent, endGoal ->
+                if (req.node == null) vm.add(title, notes, tier, parent, endGoal)
+                else vm.update(req.node.copy(title = title.trim(), notes = notes.trim(), tier = tier,
+                    parentId = parent, endGoal = endGoal))
                 editing = null
             },
+        )
+    }
+    if (confirmRestore) {
+        ConfirmDialog(
+            title = "Restore the default roadmap?",
+            message = "Your current roadmap will be replaced with the default income campaign. This cannot be undone.",
+            confirm = "RESTORE",
+            onConfirm = { confirmRestore = false; vm.restoreDefaults() },
+            onDismiss = { confirmRestore = false },
         )
     }
     if (confirmClear) {
@@ -313,6 +352,16 @@ private fun CampaignMap(map: Roadmap, onOpen: (RoadNode) -> Unit) {
             ) {
                 Canvas(Modifier.matchParentSize()) {
                     val px = { v: Float -> v.dp.toPx() }
+                    layout.beyondFrom?.let { from ->
+                        val y = px(from)
+                        drawRect(
+                            Brush.verticalGradient(
+                                0f to Color(0xFF14001F), 0.75f to Color(0xFF2A0745).copy(alpha = 0.55f), 1f to Color.Transparent,
+                                startY = 0f, endY = y,
+                            ),
+                            size = Size(size.width, y),
+                        )
+                    }
                     // zones
                     layout.zones.forEach { z ->
                         drawRoundRect(
@@ -385,15 +434,37 @@ private fun CampaignMap(map: Roadmap, onOpen: (RoadNode) -> Unit) {
                         modifier = Modifier.offset(x = 18.dp, y = (z.top + 6f).dp),
                     )
                 }
-                // end goal / origin markers
-                layout.placed.lastOrNull()?.let { last ->
+                // end goal / beyond / origin markers
+                layout.placed.getOrNull(layout.goal)?.let { g ->
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .offset(y = (last.y - last.r - 100f).dp),
+                            .offset(y = (g.y - g.r - 84f).dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        MonoLabel("▲ THE END GOAL ▲", color = last.color, fontSize = 11.sp)
+                        MonoLabel("▲ THE END GOAL ▲", color = g.color, fontSize = 11.sp)
+                    }
+                }
+                if (layout.beyondFrom != null) {
+                    val g = layout.placed[layout.goal]
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .offset(y = (g.y - g.r - 190f).dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text("Beyond", style = TextStyle(fontFamily = Fonts.Gothic, fontSize = 34.sp), color = Color(0xFFB57BFF))
+                        MonoLabel("WHAT COMES AFTER FREEDOM", color = Color(0xFF8A55C8), fontSize = 10.sp)
+                    }
+                    layout.placed.lastOrNull()?.let { last ->
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .offset(y = (last.y - last.r - 100f).dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            MonoLabel("▲ THE ABYSS ▲", color = last.color, fontSize = 11.sp)
+                        }
                     }
                 }
                 layout.placed.firstOrNull()?.let { first ->
@@ -488,8 +559,10 @@ private fun NodeLabel(pl: Placed, width: Float, isCurrent: Boolean, onClick: () 
 private fun OutlineView(map: Roadmap, onOpen: (RoadNode) -> Unit, onToggle: (RoadNode) -> Unit) {
     val p = LocalPalette.current
     val outline = remember(map) { map.outline() }
-    val pathIndex = remember(map) { map.path().associate { it.node.id to it.index } }
-    val n = map.nodes.size
+    val path = remember(map) { map.path() }
+    val pathIndex = remember(map) { path.associate { it.node.id to it.index } }
+    val goal = remember(map) { map.endGoalIndex(path) }
+    val n = path.size
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)) {
         item {
             MonoLabel(
@@ -501,7 +574,7 @@ private fun OutlineView(map: Roadmap, onOpen: (RoadNode) -> Unit, onToggle: (Roa
         items(outline, key = { it.node.id }) { pn ->
             val node = pn.node
             val idx = pathIndex[node.id] ?: 0
-            val color = progressColor(if (n <= 1) 1f else idx / (n - 1f), node.tier)
+            val color = colorAt(idx, n, goal, node.tier)
             Row(
                 Modifier
                     .fillMaxWidth()

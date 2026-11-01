@@ -12,15 +12,29 @@ android {
         applicationId = "com.breakingfree.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // CI passes -PbuildNumber so every release can be installed over the last one.
+        val buildNumber = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 1
+        versionCode = buildNumber
+        versionName = "1.$buildNumber"
     }
 
+    // A fixed, committed key: Android only lets an update install over the old app (keeping its data)
+    // when both are signed with the same key. Fine for a personal app; don't publish to a store with it.
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("breakingfree.keystore")
+            storePassword = "breakingfree"
+            keyAlias = "breakingfree"
+            keyPassword = "breakingfree"
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the release APK is installable straight from CI.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fixed")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
     compileOptions {

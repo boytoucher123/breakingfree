@@ -43,6 +43,7 @@ import com.breakingfree.app.countdown.CountdownScreen
 import com.breakingfree.app.lattice.LatticeScreen
 import com.breakingfree.app.roadmap.RoadmapScreen
 import com.breakingfree.app.ui.BreakingFreeTheme
+import com.breakingfree.app.ui.LatticeIcon
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
 
@@ -50,7 +51,7 @@ enum class Tab(val label: String, val icon: ImageVector) {
     COUNTDOWN("COUNTDOWN", Icons.Filled.DateRange),
     CHAOS("CHAOS", Icons.Filled.Warning),
     ROADMAP("ROADMAP", Icons.Filled.Place),
-    LATTICE("LATTICE", Icons.Filled.Create),
+    LATTICE("LATTICE", LatticeIcon),
 }
 
 class MainActivity : ComponentActivity() {
