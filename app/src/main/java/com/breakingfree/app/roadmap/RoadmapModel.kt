@@ -66,7 +66,9 @@ data class Roadmap(val nodes: List<RoadNode> = emptyList()) {
 
     fun descendants(id: String): Set<String> {
         val result = HashSet<String>()
-        fun walk(pid: String) = children(pid).forEach { if (result.add(it.id)) walk(it.id) }
+        fun walk(pid: String) {
+            children(pid).forEach { if (result.add(it.id)) walk(it.id) }
+        }
         walk(id)
         return result
     }
