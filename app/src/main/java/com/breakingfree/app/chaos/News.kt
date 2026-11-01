@@ -109,7 +109,7 @@ private val FEEDS = listOf(
     Feed("https://www.theguardian.com/world/rss", "Guardian World", Region.WORLD),
 )
 
-private val wordCache = HashMap<String, Regex>()
+private val wordCache = java.util.concurrent.ConcurrentHashMap<String, Regex>()
 private fun termRegex(term: String): Regex = wordCache.getOrPut(term) {
     Regex("(?<![a-z0-9])" + Regex.escape(term.trim()) + "(?![a-z0-9])")
 }
