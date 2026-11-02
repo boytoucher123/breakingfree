@@ -43,40 +43,7 @@ import com.breakingfree.app.R
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-/** The coin, spinning on its vertical axis like it was just flipped into the air. */
-@Composable
-fun SpinningCoin(size: Dp, modifier: Modifier = Modifier, periodMs: Int = 4200) {
-    val angle by rememberInfiniteTransition(label = "coin").animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(periodMs, easing = LinearEasing), RepeatMode.Restart),
-        label = "coin",
-    )
-    val density = LocalDensity.current
-    val rad = Math.toRadians(angle.toDouble())
-    val facing = kotlin.math.abs(kotlin.math.cos(rad)).toFloat()
-    Box(modifier.size(size), contentAlignment = Alignment.Center) {
-        // Coin edge: a dark sliver that shows when the face turns away.
-        Box(
-            Modifier
-                .size(width = size * 0.06f, height = size * 0.94f)
-                .graphicsLayer { alpha = (1f - facing).coerceIn(0f, 1f) }
-                .background(Color(0xFF3A0006), RoundedCornerShape(50))
-        )
-        Image(
-            painter = painterResource(R.drawable.ic_coin),
-            contentDescription = "BREAKING FREE coin",
-            modifier = Modifier
-                .size(size)
-                .graphicsLayer {
-                    rotationY = angle
-                    cameraDistance = 14f * density.density
-                    // Keep the back face reading the right way round.
-                    if (angle in 90f..270f) scaleX = -1f
-                    alpha = 0.55f + 0.45f * facing
-                },
-        )
-    }
-}
+/* SpinningCoin lives in Coin.kt */
 
 /**
  * A title that convulses between gothic script and the oppressive technical face.

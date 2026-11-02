@@ -255,65 +255,26 @@ private fun defaultRoadmap(): List<RoadNode> {
         RoadNode(title = title, tier = Tier.MAJOR, notes = notes, endGoal = endGoal).also { list += it }
     fun goal(parent: RoadNode, title: String, notes: String = "") =
         RoadNode(title = title, tier = Tier.REGULAR, parentId = parent.id, notes = notes).also { list += it }
-    fun task(parent: RoadNode, title: String) =
-        RoadNode(title = title, tier = Tier.MINOR, parentId = parent.id).also { list += it }
 
+    // Starting point: no debt, no assets. Pure income for now.
     // ---- the climb (red → white) ----
-    val e1 = major("Clear the Ground", "Epoch I. Stop the bleeding before you build.")
-    val debt = goal(e1, "Zero consumer debt")
-    task(debt, "List every debt, balance and rate")
-    task(debt, "Cancel every subscription I don't use")
-    task(debt, "Pay off the highest-rate card")
-    val buf = goal(e1, "$5k emergency fund")
-    task(buf, "Open a separate high-interest account")
-    task(buf, "Automate a weekly transfer")
-    task(e1, "Track every dollar for 30 days")
+    val e1 = major("Clear the Ground", "Epoch I. No debt, no assets. Build the income from nothing.")
+    goal(e1, "$1k/month")
+    goal(e1, "$2k/month")
+    goal(e1, "$3k/month")
+    goal(e1, "$5k/month")
+    goal(e1, "$7.5k/month")
 
-    val e2 = major("First Blood", "Epoch II. Money that didn't come from a boss.")
-    val k1 = goal(e2, "$1k/month side income")
-    task(k1, "Pick one skill to sell")
-    task(k1, "Build a portfolio of 3 pieces")
-    task(k1, "Land the first paying client")
-    val k2 = goal(e2, "$2k/month side income")
-    task(k2, "Raise rates 20%")
-    task(k2, "Get 3 repeat clients")
-    task(k2, "Post work publicly every week")
-
-    val e3 = major("The Forge", "Epoch III. Build the machine.")
-    val k5 = goal(e3, "$5k/month")
-    task(k5, "Write down the process for every repeat job")
-    task(k5, "Hire the first contractor")
-    val p1 = goal(e3, "$1k/month passive")
-    task(p1, "Launch the first digital product")
-    task(p1, "Build an email list of 500")
-    val car = goal(e3, "Own my car outright")
-    task(car, "Sell what I don't need")
-    task(car, "Pay cash, no finance")
-
-    val e4 = major("Break Free", "The end goal. Nobody owns your time.", endGoal = true)
-    val k10 = goal(e4, "$10k/month")
-    task(k10, "Six months of expenses in the bank")
-    task(k10, "Hand in the resignation")
-    val p3 = goal(e4, "$3k/month passive")
-    task(p3, "Second product line")
-    task(p3, "Put surplus into index funds every month")
-    val house = goal(e4, "Own my own house")
-    task(house, "Get pre-approved")
-    task(house, "Save a 20% deposit")
+    val e2 = major("Break Free", "The end goal. Nobody owns your time.", endGoal = true)
+    goal(e2, "$10k/month")
 
     // ---- beyond (purple) ----
     val b1 = major("Dominion", "Beyond. Past freedom, into power.")
-    val k50 = goal(b1, "$50k/month")
-    task(b1, "Build a team of 10")
-    task(k50, "Acquire a second business")
-    goal(b1, "$10k/month passive")
-    goal(b1, "$1M investment portfolio")
+    goal(b1, "$20k/month")
+    goal(b1, "$50k/month")
 
     val b2 = major("The Black Throne", "Beyond. Few ever see this far.")
-    val m1 = goal(b2, "$1M/month")
-    task(m1, "Install a CEO under me")
-    task(m1, "Own the building")
-    goal(b2, "$10M net worth")
-    goal(b2, "$100k/month passive")
+    goal(b2, "$100k/month")
+    goal(b2, "$1M/month")
     return list
 }

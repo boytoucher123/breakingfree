@@ -63,6 +63,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent { BreakingFreeApp() }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Restart the widgets' ticking if anything (e.g. a force-stop) interrupted it.
+        com.breakingfree.app.widget.CountdownWidgets.kick(this)
+    }
 }
 
 @Composable

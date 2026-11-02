@@ -47,6 +47,11 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        // Personal sideloaded app: Play-policy lint checks (exact alarms etc.) shouldn't block releases.
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 dependencies {
