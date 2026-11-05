@@ -1,0 +1,6 @@
+<resources>
+    <!-- Corner radius of the home-screen widget background. Android 12+ clips widgets to the
+         launcher's own radius (overridden in values-v31) so the border must follow that curve
+         or its corners get cut off. -->
+    <dimen name="widget_radius">16dp</dimen>
+</resources>
