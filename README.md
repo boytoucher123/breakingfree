@@ -6,14 +6,41 @@ An Android app (Kotlin + Jetpack Compose) in red and black, with type that shift
 
 - **Countdown**: a spinning goat-skull-and-pentagram coin above years, months, days, hours, minutes and seconds left until 1 January 2030.
 - **Chaos Phase**: recent news about war, military action, shootings, terror, riots, crime and political corruption, pulled from RSS feeds. Stories are grouped **Australia → the West → elsewhere**, and you can filter by region and category.
+- **Todo** (centre tab): an offline task list with a home-screen widget that tells you what to do next. Details below.
 - **Roadmap**: a campaign map you scroll upward. Majors are epochs, milestones are measurable goals (income, a house, a car) and minor milestones are tasks. Every milestone and minor milestone lives inside a major. Nodes shade from red at the start to white at the **end goal**. Past the end goal comes the purple **Beyond**. The map opens where you currently are. To reset it, use ⋮ → Restore defaults.
 - **The Lattice**: one question at a time, laid over a living lattice that bends into spacetime near the top and reacts as you write. You can add or delete questions (text-box or two-column table) with the gear icon. Defaults are in `app/src/main/assets/lattice_questions.json`.
+
+## Todo
+
+- **Tasks** have:
+  - a title and description
+  - a priority
+  - tags (spaces and hyphens become `_`)
+  - a due date and time
+  - an **available from** date
+  - **only on** weekdays
+  - **do after** prerequisites
+  - a **reminder**
+- **Reminders** fire every chosen day, either at a set time or once at a random moment inside a time window. Each reminder notification has a **Done** button.
+- **Status** is **To do**, **In progress** or **Done**. An in-progress task shows as **Blocked** while it can't be worked on, for example on a day it isn't allowed or while a prerequisite is still open. It goes back to In progress by itself.
+- **Unfinished**: a task saved without a priority or without tags goes to the **Unfinished** area and is never suggested.
+  - While anything is unfinished, a system task "Finish N unfinished tasks" appears. Its page lists them so you can fill them in.
+  - The system task resolves itself once the area is empty.
+- **Next task widget**: long-press the home screen → Widgets → BREAKING FREE → *Next task*.
+  - **Next most important** steps through tasks in order of importance.
+  - **Shuffle** picks a weighted random task. Higher priority, sooner deadlines and in-progress tasks come up more often.
+  - Tasks that can't be started, and unfinished tasks, are never shown.
+- **Settings** (the gear on the Todo tab):
+  - adjust every weighting behind the ranking and the shuffle
+  - delete tags you don't want
+
+The Todo code started as Google's [architecture-samples](https://github.com/android/architecture-samples) todo app (Apache-2.0), by way of the now-retired standalone TODO app; see [NOTICE](NOTICE). Planned context-aware weighting is in [TODO.md](TODO.md).
 
 ## Getting the APK
 
 Every push builds the app and publishes it on the repo's **Releases** page. Grab `BreakingFree.apk` from the latest release.
 
-Each build is signed with the same key (`app/breakingfree.keystore`), so a new APK installs over the old one and keeps your data. Your roadmap, questions, drafts and reflections are stored in the app's private files.
+Each build is signed with the same key (`app/breakingfree.keystore`), so a new APK installs over the old one and keeps your data. Your roadmap, questions, drafts, reflections and tasks are stored in the app's private files.
 
 ## Building locally
 

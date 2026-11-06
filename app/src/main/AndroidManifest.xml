@@ -5,6 +5,9 @@
     <!-- Exact alarms keep the home-screen countdown widgets ticking on time. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Todo task reminders. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -16,6 +19,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.BreakingFree">
             <intent-filter>
@@ -37,6 +41,22 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_units_info" />
         </receiver>
         <receiver android:name=".widget.TickReceiver" android:exported="false" />
+
+        <receiver android:name=".todo.widget.NextTaskWidgetReceiver" android:exported="true" android:label="Next task">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/next_task_widget_info" />
+        </receiver>
+        <receiver android:name=".todo.reminders.ReminderReceiver" android:exported="false" />
+        <receiver android:name=".todo.reminders.RescheduleReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <queries>

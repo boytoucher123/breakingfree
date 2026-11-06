@@ -1,0 +1,6 @@
+The Todo tab (app/src/main/java/com/breakingfree/app/todo) is derived from the Android
+Architecture Samples "todoapp" (https://github.com/android/architecture-samples, commit ee66e15),
+Copyright 2022 The Android Open Source Project, licensed under the Apache License 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). It has been substantially modified: the network
+layer was removed, and the data model, screens, theme, reminders and home-screen widget were
+added or rewritten.

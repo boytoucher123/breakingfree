@@ -1,5 +1,6 @@
 package com.breakingfree.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -22,13 +23,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -42,6 +45,10 @@ import com.breakingfree.app.chaos.ChaosScreen
 import com.breakingfree.app.countdown.CountdownScreen
 import com.breakingfree.app.lattice.LatticeScreen
 import com.breakingfree.app.roadmap.RoadmapScreen
+import com.breakingfree.app.todo.TodoNav
+import com.breakingfree.app.todo.TodoRoute
+import com.breakingfree.app.todo.TodoTab
+import com.breakingfree.app.todo.reminders.Reminders
 import com.breakingfree.app.ui.BreakingFreeTheme
 import com.breakingfree.app.ui.LatticeIcon
 import com.breakingfree.app.ui.LocalPalette
@@ -50,18 +57,34 @@ import com.breakingfree.app.ui.MonoLabel
 enum class Tab(val label: String, val icon: ImageVector) {
     COUNTDOWN("COUNTDOWN", Icons.Filled.DateRange),
     CHAOS("CHAOS", Icons.Filled.Warning),
+    TODO("TODO", Icons.Filled.CheckCircle),
     ROADMAP("ROADMAP", Icons.Filled.Place),
     LATTICE("LATTICE", LatticeIcon),
 }
 
 class MainActivity : ComponentActivity() {
+    /** A task the widget or a reminder asked to open: an id, "" for "add a task", or null. */
+    private val openTask = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        setContent { BreakingFreeApp() }
+        if (savedInstanceState == null) handle(intent)
+        setContent {
+            BreakingFreeApp(openTask = openTask.value, onOpenTaskHandled = { openTask.value = null })
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handle(intent)
+    }
+
+    private fun handle(intent: Intent?) {
+        intent?.getStringExtra(Reminders.EXTRA_OPEN_TASK)?.let { openTask.value = it }
     }
 
     override fun onResume() {
@@ -72,9 +95,18 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BreakingFreeApp() {
+fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     val tab = Tab.entries[tabIndex]
+    // Kept up here so the TODO tab remembers where you were when you switch tabs.
+    val todoNav = rememberSaveable(saver = TodoNav.saver) { TodoNav() }
+    LaunchedEffect(openTask) {
+        if (openTask != null) {
+            tabIndex = Tab.TODO.ordinal
+            todoNav.resetTo(if (openTask.isEmpty()) TodoRoute.Edit(null) else TodoRoute.Detail(openTask))
+            onOpenTaskHandled()
+        }
+    }
     BreakingFreeTheme(quiet = tab == Tab.LATTICE) {
         val p = LocalPalette.current
         Column(
@@ -92,6 +124,7 @@ fun BreakingFreeApp() {
                     when (t) {
                         Tab.COUNTDOWN -> CountdownScreen()
                         Tab.CHAOS -> ChaosScreen()
+                        Tab.TODO -> TodoTab(todoNav)
                         Tab.ROADMAP -> RoadmapScreen()
                         Tab.LATTICE -> LatticeScreen()
                     }
