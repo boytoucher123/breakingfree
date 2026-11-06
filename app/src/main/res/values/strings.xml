@@ -3,4 +3,5 @@
     <string name="widget_seconds_label">SECONDS UNTIL MMXXX</string>
     <string name="widget_seconds_desc">Every second left until 2030, ticking down.</string>
     <string name="widget_units_desc">Years, months, days, hours, minutes and seconds until 2030.</string>
+    <string name="widget_next_desc">The task you should do next: most important first, or a weighted shuffle.</string>
 </resources>
