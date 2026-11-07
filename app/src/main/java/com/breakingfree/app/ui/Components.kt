@@ -43,13 +43,14 @@ import com.breakingfree.app.R
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-/* SpinningCoin lives in Coin.kt */
+/* The burning tree that replaced the spinning coin lives in BurningTree.kt */
 
 /**
- * A title that convulses between gothic script and the oppressive technical face.
- * Between full swaps it twitches with smaller chromatic glitches. Both faces are laid out
- * (one invisibly) so the title always occupies the same space and nothing around it moves.
+ * A screen title in the Lattice's voice: Cormorant italic with a soft blue glow that breathes
+ * slowly. (It used to convulse between gothic and technical faces; the app is quieter now.)
+ * [technicalText] and [startGothic] are kept so callers needn't change.
  */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun ShiftingTitle(
     gothicText: String,
@@ -61,58 +62,24 @@ fun ShiftingTitle(
     startGothic: Boolean = true,
     textAlign: TextAlign = TextAlign.Center,
 ) {
-    var gothic by remember { mutableStateOf(startGothic) }
-    var glitch by remember { mutableIntStateOf(0) } // 0 = clean, otherwise a seed for the jitter
-    LaunchedEffect(Unit) {
-        launch {
-            while (true) {
-                delay(Random.nextLong(900, 2600))
-                repeat(Random.nextInt(1, 4)) {
-                    glitch = Random.nextInt(1, Int.MAX_VALUE)
-                    delay(Random.nextLong(40, 120))
-                    glitch = 0
-                    delay(Random.nextLong(30, 110))
-                }
-            }
-        }
-        while (true) {
-            delay(Random.nextLong(4200, 7800))
-            repeat(5) {
-                glitch = Random.nextInt(1, Int.MAX_VALUE)
-                delay(Random.nextLong(40, 110))
-                gothic = !gothic
-            }
-            delay(90)
-            glitch = 0
-        }
-    }
-    val gothicStyle = TextStyle(fontFamily = Fonts.Gothic, fontSize = fontSize * 1.05f, textAlign = textAlign)
-    val techStyle = TextStyle(fontFamily = Fonts.Oppressive, fontSize = fontSize, letterSpacing = 2.sp, textAlign = textAlign)
-    val text = if (gothic) gothicText else technicalText
-    val style = if (gothic) gothicStyle else techStyle
-    val align = when (textAlign) {
-        TextAlign.Start, TextAlign.Left -> Alignment.CenterStart
-        TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
-        else -> Alignment.Center
-    }
-    Box(modifier, contentAlignment = align) {
-        // Space reservation: the larger of the two faces decides the size, always.
-        Text(gothicText, style = gothicStyle, maxLines = 1, softWrap = false, modifier = Modifier.alpha(0f))
-        Text(technicalText, style = techStyle, maxLines = 1, softWrap = false, modifier = Modifier.alpha(0f))
-        if (glitch != 0) {
-            val r = Random(glitch)
-            val dx = r.nextInt(2, 7).dp
-            val dy = r.nextInt(-2, 3).dp
-            Text(text, style = style, color = glitchColor.copy(alpha = 0.85f), maxLines = 1, softWrap = false,
-                modifier = Modifier.offset(x = dx, y = dy))
-            Text(text, style = style, color = Color.White.copy(alpha = 0.3f), maxLines = 1, softWrap = false,
-                modifier = Modifier.offset(x = -dx, y = -dy))
-            Text(text, style = style, color = color, maxLines = 1, softWrap = false,
-                modifier = Modifier.offset(x = r.nextInt(-2, 3).dp))
-        } else {
-            Text(text, style = style, color = color, maxLines = 1, softWrap = false)
-        }
-    }
+    val breath by rememberInfiniteTransition(label = "title").animateFloat(
+        initialValue = 0.55f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Reverse), label = "breath",
+    )
+    val glow = LocalGlow.current
+    Text(
+        gothicText,
+        modifier = modifier,
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+        style = TextStyle(
+            fontFamily = Fonts.QuietItalic,
+            fontSize = fontSize,
+            textAlign = textAlign,
+            shadow = glow?.let { it.copy(color = it.color.copy(alpha = it.color.alpha * breath)) },
+        ),
+    )
 }
 
 /** Faint CRT scanlines laid over oppressive screens. */
@@ -139,7 +106,8 @@ fun MonoLabel(
         text,
         modifier = modifier,
         color = color,
-        style = TextStyle(fontFamily = Fonts.Technical, fontSize = fontSize, letterSpacing = 1.5.sp),
+        // Cormorant runs small next to the old monospace, so labels are scaled up to match.
+        style = TextStyle(fontFamily = Fonts.Quiet, fontSize = fontSize * 1.25f, letterSpacing = 1.8.sp),
     )
 }
 

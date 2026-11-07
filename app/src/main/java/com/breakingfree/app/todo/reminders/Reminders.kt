@@ -153,7 +153,7 @@ object Reminders {
         ).joinToString("  //  ")
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(0xFFC4001A.toInt())
+            .setColor(0xFF2F7DE0.toInt())
             .setContentTitle(task.titleForList)
             .setContentText(text.ifEmpty { "Reminder" })
             .setStyle(NotificationCompat.BigTextStyle().bigText(text.ifEmpty { "Reminder" }))

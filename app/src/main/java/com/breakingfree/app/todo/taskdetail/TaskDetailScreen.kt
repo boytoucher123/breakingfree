@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -135,12 +137,19 @@ fun TaskDetailScreen(
             }
             if (task.description.isNotBlank()) {
                 Spacer(Modifier.height(18.dp))
-                Text(task.description, color = p.text, style = TextStyle(fontSize = 15.sp, lineHeight = 21.sp))
+                Text(
+                    task.description,
+                    color = if (task.isSystem) p.textDim else p.text,
+                    style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 18.sp, lineHeight = 23.sp),
+                    // The system task's note stays short, like the cards elsewhere.
+                    maxLines = if (task.isSystem) 3 else Int.MAX_VALUE,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             if (state.unfinished.isNotEmpty()) {
                 Spacer(Modifier.height(22.dp))
                 SectionHeader("TO FINISH")
-                state.unfinished.forEach { LinkedTask(it, onClick = { onEditTask(it.id) }) }
+                state.unfinished.forEach { LinkedTask(it, onClick = { onEditTask(it.id) }, showMissing = true) }
             }
             if (state.blockedBy.isNotEmpty()) {
                 Spacer(Modifier.height(22.dp))
@@ -200,25 +209,35 @@ private fun reminderLine(task: Task): String? {
 }
 
 @Composable
-private fun LinkedTask(task: Task, onClick: () -> Unit) {
+private fun LinkedTask(task: Task, onClick: () -> Unit, showMissing: Boolean = false) {
     val p = LocalPalette.current
     Row(
         Modifier
             .padding(top = 8.dp)
             .fillMaxWidth()
             .border(1.dp, p.line)
-            .background(p.surface)
+            .background(p.surface.copy(alpha = 0.7f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MonoLabel(if (task.isCompleted) "[X]" else "[ ]", color = if (task.isCompleted) p.accent else p.textDim)
-        Text(
-            task.titleForList,
-            Modifier.padding(start = 10.dp),
-            color = if (task.isCompleted) p.textDim else p.text,
-            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
-            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+        Box(
+            Modifier
+                .size(7.dp)
+                .background(if (task.isCompleted) p.accent else if (showMissing) p.accentDim else p.line),
         )
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(
+                task.titleForList,
+                color = if (task.isCompleted) p.textDim else p.text,
+                style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 18.sp, lineHeight = 22.sp),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+            )
+            if (showMissing && task.missingFields.isNotEmpty()) {
+                MonoLabel("NEEDS " + task.missingFields.joinToString(" · "), color = p.textDim, fontSize = 10.sp)
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.breakingfree.app.roadmap
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,7 +106,7 @@ data class Roadmap(val nodes: List<RoadNode> = emptyList()) {
 data class RoadmapBook(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    val scheme: RoadScheme = RoadScheme.BLOOD,
+    val scheme: RoadScheme = RoadScheme.ICE,
     val map: Roadmap = Roadmap(),
 )
 
@@ -230,11 +231,11 @@ class RoadmapViewModel(app: Application) : AndroidViewModel(app) {
                     RoadmapBook(
                         id = o.getString("id"),
                         name = o.getString("name"),
-                        scheme = o.optJSONObject("scheme")?.let(::readScheme) ?: RoadScheme.BLOOD,
+                        scheme = o.optJSONObject("scheme")?.let(::readScheme) ?: RoadScheme.ICE,
                         map = Roadmap(normalize(readNodes(o.getJSONArray("nodes")))),
                     )
                 }
-                if (books.isNotEmpty()) return books
+                if (books.isNotEmpty()) return iceOnce(books)
             }
         }
         val nodes = if (legacyFile.exists()) {
@@ -243,6 +244,19 @@ class RoadmapViewModel(app: Application) : AndroidViewModel(app) {
             defaultRoadmap()
         }
         return listOf(RoadmapBook(name = "General", map = Roadmap(nodes))).also(::save)
+    }
+
+    /**
+     * The app went blue: once, any roadmap still on the untouched Blood preset (the old default)
+     * moves to Ice. Blood stays available in COLOURS for anyone who wants it back.
+     */
+    private fun iceOnce(books: List<RoadmapBook>): List<RoadmapBook> {
+        val prefs = getApplication<Application>().getSharedPreferences("roadmap", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("ice_retheme", false)) return books
+        val moved = books.map { if (it.scheme == RoadScheme.BLOOD) it.copy(scheme = RoadScheme.ICE) else it }
+        prefs.edit().putBoolean("ice_retheme", true).apply()
+        if (moved != books) save(moved)
+        return moved
     }
 
     private fun readNodes(arr: JSONArray): List<RoadNode> = (0 until arr.length()).map { i ->
@@ -269,7 +283,7 @@ class RoadmapViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun readScheme(o: JSONObject): RoadScheme {
-        val d = RoadScheme.BLOOD
+        val d = RoadScheme.ICE
         return RoadScheme(
             name = o.optString("name", d.name),
             origin = o.optInt("origin", d.origin),

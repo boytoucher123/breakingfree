@@ -51,6 +51,7 @@ import com.breakingfree.app.todo.ui.SectionHeader
 import com.breakingfree.app.todo.ui.StatusBadge
 import com.breakingfree.app.todo.util.formatDue
 import com.breakingfree.app.todo.util.formatWhen
+import com.breakingfree.app.ui.Fonts
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
 import com.breakingfree.app.ui.ShiftingTitle
@@ -197,14 +198,14 @@ private fun NextUpCard(
         MonoLabel(header, Modifier.padding(bottom = 8.dp), color = p.accent, fontSize = 11.sp)
         if (task == null && card.total > 0) {
             // Easy found nothing small enough; the other buttons still work.
-            Text("Nothing small to pick.", color = p.text, style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold))
+            Text("Nothing small to pick.", color = p.text, style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 20.sp))
             Spacer(Modifier.height(4.dp))
             MonoLabel("GIVE SOME TASKS A SIZE OF TINY OR SMALL", fontSize = 11.sp)
         } else if (task == null) {
             Text(
                 if (hasAnyTasks) "Nothing you can start right now." else "Nothing to do.",
                 color = p.text,
-                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+                style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 20.sp),
             )
             Spacer(Modifier.height(10.dp))
             ActionButton("+ ADD A TASK", onClick = onAdd)
@@ -213,7 +214,7 @@ private fun NextUpCard(
             Text(
                 card.title,
                 color = p.text,
-                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp),
+                style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 22.sp, lineHeight = 25.sp),
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -290,7 +291,7 @@ private fun TaskItem(row: TaskRow, onClick: () -> Unit, onCheckedChange: (Boolea
             Text(
                 row.title,
                 color = if (dim) p.textDim else p.text,
-                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 21.sp),
+                style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 18.sp, lineHeight = 21.sp),
                 textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

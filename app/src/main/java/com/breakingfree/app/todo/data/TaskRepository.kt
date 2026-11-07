@@ -95,14 +95,15 @@ class TaskRepository(
         val unfinished = tasks.count { it.isUnfinished }
         val sys = tasks.firstOrNull { it.system == SystemKind.FINISH_UNFINISHED }
         val now = System.currentTimeMillis()
+        // Older installs carry a longer wording; keep it to the current short one.
+        if (sys != null && sys.description != FINISH_DESCRIPTION) dao.updateDescription(sys.id, FINISH_DESCRIPTION)
         when {
             unfinished > 0 && sys == null -> dao.upsert(
                 toLocal(
                     UUID.randomUUID().toString(),
                     TaskDraft(
                         title = FINISH_TITLE,
-                        description = "Some tasks are missing a priority, tags, size, difficulty or interest, so they can't be suggested. " +
-                            "Open each one and fill in the missing details. This resolves itself once they're all done.",
+                        description = FINISH_DESCRIPTION,
                         priority = Priority.MEDIUM,
                     ),
                     TaskStatus.TODO, now, null, SystemKind.FINISH_UNFINISHED.name,
@@ -174,5 +175,6 @@ class TaskRepository(
 
     companion object {
         const val FINISH_TITLE = "Finish unfinished tasks"
+        const val FINISH_DESCRIPTION = "These are missing details, so they can't be suggested yet. Tap one to fill it in."
     }
 }

@@ -124,7 +124,7 @@ fun NodeDialog(
         }
         if (node.notes.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
-            Text(node.notes, color = p.textDim, style = TextStyle(fontSize = 15.sp, lineHeight = 20.sp))
+            Text(node.notes, color = p.textDim, style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 17.sp, lineHeight = 20.sp))
         }
         Spacer(Modifier.height(18.dp))
         ActionButton(if (node.done) "MARK AS NOT CLEARED" else "MARK AS CLEARED", Modifier.fillMaxWidth(),
