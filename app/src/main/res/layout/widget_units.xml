@@ -28,20 +28,20 @@
                 android:autoSizeMinTextSize="10sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
-                android:fontFamily="@font/anton"
+                android:fontFamily="@font/cormorant"
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="00"
-                android:textColor="#FFEDE3DC" />
+                android:textColor="#FFC4DAF5" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/share_tech_mono"
+                android:fontFamily="@font/cormorant"
                 android:letterSpacing="0.1"
                 android:maxLines="1"
                 android:text="YEARS"
-                android:textColor="#FF8F7C78"
-                android:textSize="8sp" />
+                android:textColor="#FF7891B8"
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="0dp"
@@ -61,20 +61,20 @@
                 android:autoSizeMinTextSize="10sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
-                android:fontFamily="@font/anton"
+                android:fontFamily="@font/cormorant"
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="00"
-                android:textColor="#FFEDE3DC" />
+                android:textColor="#FFC4DAF5" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/share_tech_mono"
+                android:fontFamily="@font/cormorant"
                 android:letterSpacing="0.1"
                 android:maxLines="1"
                 android:text="MONTHS"
-                android:textColor="#FF8F7C78"
-                android:textSize="8sp" />
+                android:textColor="#FF7891B8"
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="0dp"
@@ -94,20 +94,20 @@
                 android:autoSizeMinTextSize="10sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
-                android:fontFamily="@font/anton"
+                android:fontFamily="@font/cormorant"
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="00"
-                android:textColor="#FFEDE3DC" />
+                android:textColor="#FFC4DAF5" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/share_tech_mono"
+                android:fontFamily="@font/cormorant"
                 android:letterSpacing="0.1"
                 android:maxLines="1"
                 android:text="DAYS"
-                android:textColor="#FF8F7C78"
-                android:textSize="8sp" />
+                android:textColor="#FF7891B8"
+                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
     <LinearLayout
@@ -133,20 +133,20 @@
                 android:autoSizeMinTextSize="10sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
-                android:fontFamily="@font/anton"
+                android:fontFamily="@font/cormorant"
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="00"
-                android:textColor="#FFEDE3DC" />
+                android:textColor="#FFC4DAF5" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/share_tech_mono"
+                android:fontFamily="@font/cormorant"
                 android:letterSpacing="0.1"
                 android:maxLines="1"
                 android:text="HOURS"
-                android:textColor="#FF8F7C78"
-                android:textSize="8sp" />
+                android:textColor="#FF7891B8"
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="0dp"
@@ -166,20 +166,20 @@
                 android:autoSizeMinTextSize="10sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
-                android:fontFamily="@font/anton"
+                android:fontFamily="@font/cormorant"
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="00"
-                android:textColor="#FFEDE3DC" />
+                android:textColor="#FFC4DAF5" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/share_tech_mono"
+                android:fontFamily="@font/cormorant"
                 android:letterSpacing="0.1"
                 android:maxLines="1"
                 android:text="MINUTES"
-                android:textColor="#FF8F7C78"
-                android:textSize="8sp" />
+                android:textColor="#FF7891B8"
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="0dp"
@@ -199,20 +199,20 @@
                 android:autoSizeMinTextSize="10sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
-                android:fontFamily="@font/anton"
+                android:fontFamily="@font/cormorant"
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="00"
-                android:textColor="#FFC4001A" />
+                android:textColor="#FF2F7DE0" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/share_tech_mono"
+                android:fontFamily="@font/cormorant"
                 android:letterSpacing="0.1"
                 android:maxLines="1"
                 android:text="SECONDS"
-                android:textColor="#FF8F7C78"
-                android:textSize="8sp" />
+                android:textColor="#FF7891B8"
+                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

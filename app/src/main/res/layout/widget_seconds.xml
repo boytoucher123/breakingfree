@@ -15,12 +15,12 @@
         android:id="@+id/widget_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/share_tech_mono"
+        android:fontFamily="@font/cormorant"
         android:letterSpacing="0.15"
         android:maxLines="1"
         android:text="@string/widget_seconds_label"
-        android:textColor="#FFC4001A"
-        android:textSize="10sp" />
+        android:textColor="#FF2F7DE0"
+        android:textSize="12sp" />
 
     <TextView
         android:id="@+id/widget_seconds"
@@ -31,10 +31,10 @@
         android:autoSizeMinTextSize="12sp"
         android:autoSizeStepGranularity="1sp"
         android:autoSizeTextType="uniform"
-        android:fontFamily="@font/anton"
+        android:fontFamily="@font/cormorant"
         android:gravity="center"
         android:letterSpacing="0.04"
         android:maxLines="1"
         android:text="100,000,000"
-        android:textColor="#FFEDE3DC" />
+        android:textColor="#FFC4DAF5" />
 </LinearLayout>

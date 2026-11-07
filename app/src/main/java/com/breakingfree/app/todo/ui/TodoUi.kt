@@ -29,6 +29,7 @@ import com.breakingfree.app.todo.data.Task
 import com.breakingfree.app.todo.domain.DisplayStatus
 import com.breakingfree.app.todo.domain.Weekdays
 import com.breakingfree.app.ui.Fonts
+import com.breakingfree.app.ui.LocalGlow
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
 import com.breakingfree.app.ui.TagChip
@@ -69,12 +70,12 @@ fun todoFieldColors(): TextFieldColors {
     )
 }
 
-/** Anton section header followed by a rule, as on the roadmap. */
+/** Quiet, glowing section header followed by a rule, as on the roadmap. */
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     val p = LocalPalette.current
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = TextStyle(fontFamily = Fonts.Oppressive, fontSize = 18.sp, letterSpacing = 3.sp), color = p.text)
+        Text(text, style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 20.sp, letterSpacing = 3.sp, shadow = LocalGlow.current), color = p.text)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f).height(1.dp).background(p.line))
     }

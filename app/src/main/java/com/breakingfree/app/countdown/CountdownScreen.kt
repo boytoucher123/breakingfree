@@ -33,11 +33,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.breakingfree.app.ui.SpinningCoin
+import com.breakingfree.app.ui.BurningTree
 import com.breakingfree.app.ui.Fonts
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
-import com.breakingfree.app.ui.Scanlines
 import com.breakingfree.app.ui.ShiftingTitle
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
@@ -84,23 +83,17 @@ fun CountdownScreen() {
     val decadeTotal = ChronoUnit.SECONDS.between(DECADE_START, TARGET).toFloat()
     val decadeDone = (ChronoUnit.SECONDS.between(DECADE_START, now) / decadeTotal).coerceIn(0f, 1f)
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(p.accentDim.copy(alpha = 0.35f), p.background, p.background))
-            )
-    ) {
+    // No background of its own: the app's lattice shows through behind it.
+    Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SpinningCoin(150.dp)
-            Spacer(Modifier.height(18.dp))
-            ShiftingTitle("BREAKING FREE", "BREAKING FREE", fontSize = 31.sp)
+            BurningTree(Modifier.fillMaxWidth().height(210.dp))
+            ShiftingTitle("Breaking Free", "Breaking Free", fontSize = 40.sp)
             Spacer(Modifier.height(4.dp))
             MonoLabel("T-MINUS // ANNO DOMINI MMXXX", color = p.accent)
             Spacer(Modifier.height(28.dp))
@@ -162,7 +155,6 @@ fun CountdownScreen() {
             Spacer(Modifier.height(16.dp))
             MonoLabel("● SIGNAL LIVE", color = p.accent, modifier = Modifier.alpha(pulse))
         }
-        Scanlines(Modifier.fillMaxSize())
     }
 }
 

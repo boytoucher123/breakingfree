@@ -1,15 +1,15 @@
 # BREAKING FREE
 
-An Android app (Kotlin + Jetpack Compose) in red and black, with type that shifts between gothic script and oppressive, technical faces.
+An Android app (Kotlin + Jetpack Compose) in deep Ice blue, set throughout in the Lattice's quiet Cormorant serif with a faint blue glow, over a dim lattice night sky.
 
 ## Tabs
 
-- **Countdown**: a spinning, worn goat-skull-and-pentagram coin above years, months, days, hours, minutes and seconds left until 1 January 2030.
+- **Countdown**: a distant tree burning blue on a hill above years, months, days, hours, minutes and seconds left until 1 January 2030.
 - **Chaos Phase**: recent news about war, military action, shootings, terror, riots, crime and political corruption, pulled from RSS feeds. Stories are grouped **Australia → the West → elsewhere**, and you can filter by region and category.
 - **Tasks** (centre tab): an offline task list with a home-screen widget that tells you what to do next. Details below.
 - **Roadmap**: a campaign map you scroll upward. Majors are epochs, milestones are measurable goals (income, a house, a car) and minor milestones are tasks. Every milestone and minor milestone lives inside a major. Nodes shade from the origin colour at the start to the end-goal colour at the **end goal**. Past the end goal comes the **Beyond**, which is its own page: scroll past the end goal and the map turns over to the Beyond (and back), so the two are never on screen together. The map opens where you currently are.
   - **Several roadmaps**: swipe left and right between them. The first is called *General*. ⋮ → New roadmap / Rename / Delete this roadmap.
-  - **Colours**: ⋮ → Colours. Pick a preset (Blood, Ice, Venom, Gold, Ash) or set each of the six colours (origin, midway, end goal, beyond, deeper, abyss) yourself. The tab's buttons, page squares and the line above the tab bar take on the roadmap's colours.
+  - **Colours**: ⋮ → Colours. Pick a preset (Blood, Ice, Venom, Gold, Ash; new roadmaps start on Ice) or set each of the six colours (origin, midway, end goal, beyond, deeper, abyss) yourself. The tab's buttons, page squares and the line above the tab bar take on the roadmap's colours.
   - ⋮ → Restore defaults or Clear this roadmap affect only the roadmap on screen.
 - **The Lattice**: one question at a time, laid over a living lattice that bends into spacetime near the top and reacts as you write. It follows the clock. From 9am to 7pm is the dead zone: dull earthy stone, nearly still, no blue, and the questions are closed ("There's nothing here, at least for now."). Hints of blue from 7pm, building from 9pm, fully blue from midnight with the text glowing a little. From 2am to 4am the text glows strongly and the whole background gently warps, as slow wavefronts drift through it in every direction (Android 13+; older phones get a faint shimmer instead). You can add or delete questions (text-box or two-column table) with the gear icon. Defaults are in `app/src/main/assets/lattice_questions.json`.
 
@@ -58,4 +58,4 @@ Open the project in Android Studio (Ladybug or newer), or run:
 ./gradlew assembleDebug
 ```
 
-Fonts (SIL Open Font License, from Google Fonts): UnifrakturCook, Pirata One, Anton, Share Tech Mono, Cormorant Garamond.
+Font (SIL Open Font License, from Google Fonts): Cormorant Garamond. UnifrakturCook, Pirata One, Anton and Share Tech Mono are still bundled but no longer used.

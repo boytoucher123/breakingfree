@@ -7,7 +7,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,18 +40,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breakingfree.app.chaos.ChaosScreen
 import com.breakingfree.app.countdown.CountdownScreen
+import com.breakingfree.app.lattice.LatticeBackground
 import com.breakingfree.app.lattice.LatticeScreen
 import com.breakingfree.app.roadmap.RoadmapScreen
 import com.breakingfree.app.roadmap.RoadmapViewModel
 import com.breakingfree.app.lattice.rememberLatticeMood
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.breakingfree.app.ui.RedPalette
+import com.breakingfree.app.ui.IcePalette
 import com.breakingfree.app.ui.latticePalette
 import com.breakingfree.app.todo.TodoNav
 import com.breakingfree.app.todo.TodoRoute
@@ -121,7 +125,7 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
     fun paletteFor(t: Tab) = when (t) {
         Tab.ROADMAP -> (books.getOrNull(roadPage) ?: books.first()).scheme.palette()
         Tab.LATTICE -> latticePalette(mood.vigor)
-        else -> RedPalette
+        else -> IcePalette
     }
     BreakingFreeTheme(paletteFor(tab)) {
         val p = LocalPalette.current
@@ -134,8 +138,18 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .statusBarsPadding()
             ) {
+                // The Lattice's night sky, faint, behind every tab that doesn't paint its own.
+                val backdrop by animateFloatAsState(
+                    if (tab == Tab.LATTICE || tab == Tab.ROADMAP) 0f else 1f, tween(600), label = "backdrop",
+                )
+                if (backdrop > 0.01f) {
+                    LatticeBackground(
+                        energy = 0f, ripple = 1f, resonance = 0f, vigor = 0.85f,
+                        modifier = Modifier.fillMaxSize().alpha(0.38f * backdrop),
+                    )
+                }
+                Box(Modifier.fillMaxSize().statusBarsPadding()) {
                 Crossfade(targetState = tab, animationSpec = tween(350), label = "tab") { t ->
                     // Each tab keeps its own colours while it fades in or out, so one tab's
                     // palette never bleeds onto another's text.
@@ -149,6 +163,7 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
                         }
                     }
                 }
+                }
             }
             BottomBar(tab) { tabIndex = it.ordinal }
         }
@@ -161,7 +176,7 @@ private fun BottomBar(current: Tab, onSelect: (Tab) -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(Color.Black)
+            .background(lerp(p.background, Color.Black, 0.5f))
             .navigationBarsPadding()
     ) {
         Box(

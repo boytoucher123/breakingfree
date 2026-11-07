@@ -48,7 +48,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breakingfree.app.ui.Fonts
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
-import com.breakingfree.app.ui.Scanlines
 import com.breakingfree.app.ui.ShiftingTitle
 import com.breakingfree.app.ui.TagChip
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -186,7 +185,6 @@ fun ChaosScreen(vm: ChaosViewModel = viewModel()) {
                 }
             }
         }
-        Scanlines(Modifier.fillMaxSize())
     }
 }
 
@@ -240,7 +238,7 @@ private fun NewsCard(n: NewsItem, onClick: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text(
                 n.title,
-                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 21.sp),
+                style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 18.sp, lineHeight = 21.sp),
                 color = p.text,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
@@ -249,7 +247,7 @@ private fun NewsCard(n: NewsItem, onClick: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     n.summary,
-                    style = TextStyle(fontSize = 13.sp, lineHeight = 17.sp),
+                    style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 15.sp, lineHeight = 17.sp),
                     color = p.textDim,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,

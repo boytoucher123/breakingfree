@@ -42,7 +42,7 @@ import androidx.glance.layout.width
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontFamily
-import androidx.glance.text.FontWeight
+import androidx.glance.text.FontStyle
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
@@ -126,7 +126,7 @@ class NextTaskWidget : GlanceAppWidget() {
                 Column {
                     Text(
                         task?.let { displayTitle(it, tasks) } ?: if (resolved.total > 0) "NOTHING SMALL TO PICK" else "NOTHING TO DO",
-                        style = TextStyle(color = ColorProvider(TextColor), fontSize = 17.sp, fontWeight = FontWeight.Bold),
+                        style = TextStyle(color = ColorProvider(TextColor), fontSize = 19.sp, fontStyle = FontStyle.Italic, fontFamily = FontFamily.Serif),
                         maxLines = 2,
                     )
                     val meta = when {
@@ -174,12 +174,12 @@ class NextTaskWidget : GlanceAppWidget() {
     }
 
     private fun label(color: Color, size: Int) =
-        TextStyle(color = ColorProvider(color), fontSize = size.sp, fontFamily = FontFamily.Monospace)
+        TextStyle(color = ColorProvider(color), fontSize = size.sp, fontFamily = FontFamily.Serif)
 
     companion object {
-        private val AccentColor = Color(0xFFC4001A)
-        private val TextColor = Color(0xFFEDE3DC)
-        private val DimColor = Color(0xFF8F7C78)
+        private val AccentColor = Color(0xFF2F7DE0)
+        private val TextColor = Color(0xFFC4DAF5)
+        private val DimColor = Color(0xFF7891B8)
         /** Read by [MainActivity] to open a task ("" = add a task). */
         val OpenTaskParam = ActionParameters.Key<String>(Reminders.EXTRA_OPEN_TASK)
 

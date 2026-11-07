@@ -3,6 +3,7 @@ package com.breakingfree.app.roadmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.breakingfree.app.ui.Palette
+import com.breakingfree.app.ui.IcePalette
 import com.breakingfree.app.ui.RedPalette
 import kotlin.math.pow
 
@@ -53,6 +54,7 @@ data class RoadScheme(
      */
     fun palette(): Palette {
         if (this == BLOOD) return RedPalette
+        if (this == ICE) return IcePalette
         val accent = c(midway)
         val dark = lerp(c(origin), Color.Black, 0.6f)
         return Palette(

@@ -37,6 +37,7 @@ import com.breakingfree.app.roadmap.ActionButton
 import com.breakingfree.app.roadmap.ConfirmDialog
 import com.breakingfree.app.todo.domain.Weights
 import com.breakingfree.app.todo.ui.SectionHeader
+import com.breakingfree.app.ui.Fonts
 import com.breakingfree.app.ui.LocalPalette
 import com.breakingfree.app.ui.MonoLabel
 import kotlin.math.roundToInt
@@ -110,7 +111,7 @@ fun TodoSettingsScreen(onBack: () -> Unit, viewModel: TodoSettingsViewModel = vi
                         .padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("#${t.tag}", Modifier.weight(1f), color = p.text, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold))
+                    Text("#${t.tag}", Modifier.weight(1f), color = p.text, style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 17.sp))
                     MonoLabel("${t.count} TASK${if (t.count == 1) "" else "S"}", fontSize = 10.sp)
                     IconButton(onClick = { deleting = t }) { Icon(Icons.Filled.Delete, "Delete tag", tint = p.accent) }
                 }
