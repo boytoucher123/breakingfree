@@ -42,7 +42,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.breakingfree.app.roadmap.ActionButton
 import com.breakingfree.app.roadmap.ConfirmDialog
+import com.breakingfree.app.todo.data.Difficulty
 import com.breakingfree.app.todo.data.Priority
+import com.breakingfree.app.todo.data.TaskSize
 import com.breakingfree.app.todo.data.Task
 import com.breakingfree.app.todo.domain.Block
 import com.breakingfree.app.todo.domain.DisplayStatus
@@ -117,6 +119,11 @@ fun TaskDetailScreen(
                     "TAGS".takeIf { task.tags.isEmpty() },
                 ).joinToString(" + ") + " // EDIT TO FINISH" else null,
                 task.priority.takeIf { it != Priority.NONE && !task.isSystem }?.let { "${it.label} PRIORITY" },
+                listOfNotNull(
+                    task.size.takeIf { it != TaskSize.UNSET }?.let { "SIZE ~${it.label}" },
+                    task.difficulty.takeIf { it != Difficulty.UNSET }?.let { "${it.label} DIFFICULTY" },
+                    task.interest.takeIf { it > 0 }?.let { "INTEREST $it/10" },
+                ).joinToString("  //  ").ifEmpty { null },
                 task.dueAt?.let { formatDue(it, now) },
                 task.startAt?.takeIf { state.block != Block.NOT_YET }?.let { "AVAILABLE FROM " + formatWhen(it, now) },
                 task.days.takeIf { it != Weekdays.ANY && state.block != Block.WRONG_DAY }?.let { "ONLY ON " + Weekdays.label(it) },

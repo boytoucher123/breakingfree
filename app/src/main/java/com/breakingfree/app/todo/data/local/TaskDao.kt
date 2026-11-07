@@ -8,6 +8,8 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -75,9 +77,20 @@ interface TaskDao {
 
 @Database(
     entities = [LocalTask::class, LocalTaskTag::class, LocalTaskDependency::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class TodoDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
+
+    companion object {
+        /** Version 2: interest, size and difficulty. Existing tasks get 0 (not set) for each. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE task ADD COLUMN interest INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE task ADD COLUMN size INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE task ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+    }
 }

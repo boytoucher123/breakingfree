@@ -110,9 +110,8 @@ class TasksViewModel(app: Application) : AndroidViewModel(app) {
         selection.value = NextTask.pressShuffle(candidates(), selection.value, System.currentTimeMillis(), w = graph.weights.weights.value)
     }
 
-    fun nextDone(task: Task) = viewModelScope.launch {
-        repo.completeTask(task.id)
-        selection.value = NextTask.afterDone(candidates(), selection.value, System.currentTimeMillis(), graph.weights.weights.value)
+    fun pressEasy() = viewModelScope.launch {
+        selection.value = NextTask.pressEasy(candidates(), selection.value, System.currentTimeMillis(), w = graph.weights.weights.value)
     }
 
     private suspend fun candidates() = repo.getTasks().map { it.toCandidate() }

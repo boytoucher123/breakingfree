@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,7 +42,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breakingfree.app.roadmap.ActionButton
+import com.breakingfree.app.todo.data.Difficulty
 import com.breakingfree.app.todo.data.Priority
+import com.breakingfree.app.todo.data.TaskSize
 import com.breakingfree.app.todo.data.Task
 import com.breakingfree.app.todo.domain.DisplayStatus
 import com.breakingfree.app.todo.domain.NextMode
@@ -73,14 +76,14 @@ fun TasksScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        ShiftingTitle("Todo", "TODO", fontSize = 34.sp, textAlign = TextAlign.Start)
+                        ShiftingTitle("Tasks", "TASKS", fontSize = 34.sp, textAlign = TextAlign.Start)
                         MonoLabel(
-                            "TASKS // ${state.openCount} OPEN" +
+                            "${state.openCount} OPEN" +
                                 if (state.unfinishedCount > 0) " // ${state.unfinishedCount} UNFINISHED" else "",
                             color = p.accent,
                         )
                     }
-                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Todo settings", tint = p.textDim) }
+                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Tasks settings", tint = p.textDim) }
                 }
             }
             item {
@@ -90,7 +93,7 @@ fun TasksScreen(
                     onOpen = onTaskClick,
                     onImportant = viewModel::pressImportant,
                     onShuffle = viewModel::pressShuffle,
-                    onDone = viewModel::nextDone,
+                    onEasy = viewModel::pressEasy,
                     onAdd = onAddTask,
                 )
             }
@@ -174,7 +177,7 @@ private fun NextUpCard(
     onOpen: (String) -> Unit,
     onImportant: () -> Unit,
     onShuffle: () -> Unit,
-    onDone: (Task) -> Unit,
+    onEasy: () -> Unit,
     onAdd: () -> Unit,
 ) {
     val p = LocalPalette.current
@@ -188,19 +191,18 @@ private fun NextUpCard(
     ) {
         val task = card.task
         val header = when {
+            card.selection.mode == NextMode.EASY && card.total > 0 -> "NEXT // EASY"
             task == null -> "NEXT //"
             card.selection.mode == NextMode.SHUFFLE -> "NEXT // SHUFFLED"
             else -> "NEXT // #${card.rank + 1} OF ${card.total}"
         }
-        Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-            MonoLabel(header, Modifier.weight(1f), color = p.accent, fontSize = 11.sp)
-            if (task != null && !task.isSystem) {
-                IconButton(onClick = { onDone(task) }) {
-                    Icon(Icons.Filled.Check, contentDescription = "Mark done", tint = p.text)
-                }
-            }
-        }
-        if (task == null) {
+        MonoLabel(header, Modifier.padding(bottom = 8.dp), color = p.accent, fontSize = 11.sp)
+        if (task == null && card.total > 0) {
+            // Easy found nothing small enough; the other buttons still work.
+            Text("Nothing small to pick.", color = p.text, style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold))
+            Spacer(Modifier.height(4.dp))
+            MonoLabel("GIVE SOME TASKS A SIZE OF TINY OR SMALL", fontSize = 11.sp)
+        } else if (task == null) {
             Text(
                 if (hasAnyTasks) "Nothing you can start right now." else "Nothing to do.",
                 color = p.text,
@@ -209,8 +211,7 @@ private fun NextUpCard(
             Spacer(Modifier.height(10.dp))
             ActionButton("+ ADD A TASK", onClick = onAdd)
             return@Column
-        }
-        Column(Modifier.fillMaxWidth().clickable { onOpen(task.id) }) {
+        } else Column(Modifier.fillMaxWidth().clickable { onOpen(task.id) }) {
             Text(
                 card.title,
                 color = p.text,
@@ -225,9 +226,11 @@ private fun NextUpCard(
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ActionButton(card.selection.importantButtonLabel, Modifier.weight(1.4f), onClick = onImportant)
-            ActionButton("SHUFFLE", Modifier.weight(1f), onClick = onShuffle)
+        // Same height for all three, even when the first label wraps.
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton(card.selection.importantButtonLabel, Modifier.weight(1.3f).fillMaxHeight(), onClick = onImportant)
+            ActionButton("SHUFFLE", Modifier.weight(1.1f).fillMaxHeight(), onClick = onShuffle)
+            ActionButton("EASY", Modifier.weight(0.8f).fillMaxHeight(), onClick = onEasy)
         }
     }
 }
@@ -236,6 +239,8 @@ internal fun metaLine(task: Task): String = listOfNotNull(
     if (task.isInProgress) "IN PROGRESS" else null,
     task.dueAt?.let { formatDue(it) },
     task.priority.takeIf { it != Priority.NONE && !task.isSystem }?.let { "${it.label} PRIORITY" },
+    task.size.takeIf { it != TaskSize.UNSET }?.let { "~${it.label}" },
+    task.difficulty.takeIf { it != Difficulty.UNSET }?.let { it.label },
     task.days.takeIf { it != Weekdays.ANY }?.let { Weekdays.label(it) },
     task.tags.takeIf { it.isNotEmpty() }?.joinToString(" ") { "#$it" },
 ).joinToString("  //  ")

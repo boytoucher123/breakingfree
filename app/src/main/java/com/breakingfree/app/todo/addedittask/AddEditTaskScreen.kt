@@ -36,6 +36,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -60,7 +62,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.breakingfree.app.roadmap.ActionButton
+import com.breakingfree.app.todo.data.Difficulty
 import com.breakingfree.app.todo.data.Priority
+import com.breakingfree.app.todo.data.TaskSize
 import com.breakingfree.app.todo.domain.Reminder
 import com.breakingfree.app.todo.domain.ReminderMode
 import com.breakingfree.app.todo.domain.ReminderPlanner
@@ -79,7 +83,9 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddEditTaskScreen(
     taskId: String?,
@@ -154,6 +160,31 @@ fun AddEditTaskScreen(
             }
 
             Spacer(Modifier.height(22.dp))
+            SectionHeader("INTEREST")
+            MonoLabel("HOW MUCH YOU WANT TO DO IT // NUDGES SHUFFLE AND EASY", Modifier.padding(top = 4.dp), fontSize = 10.sp)
+            InterestSlider(d.interest, viewModel::updateInterest)
+
+            Spacer(Modifier.height(16.dp))
+            SectionHeader("SIZE (~)")
+            MonoLabel("ROUGHLY HOW BIG // BIGGER MAKES A DEADLINE COUNT MORE", Modifier.padding(top = 4.dp), fontSize = 10.sp)
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TaskSize.entries.forEach { sz ->
+                    TagChip(sz.label, selected = d.size == sz, onClick = { viewModel.updateSize(sz) })
+                }
+            }
+
+            Spacer(Modifier.height(22.dp))
+            SectionHeader("DIFFICULTY")
+            MonoLabel("HOW HARD IT IS // EASIER COMES UP MORE ON EASY", Modifier.padding(top = 4.dp), fontSize = 10.sp)
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Difficulty.entries.forEach { df ->
+                    TagChip(df.label, selected = d.difficulty == df, onClick = { viewModel.updateDifficulty(df) })
+                }
+            }
+
+            Spacer(Modifier.height(22.dp))
             SectionHeader("TAGS")
             Spacer(Modifier.height(10.dp))
             TagsEditor(d.tags, s.knownTags, onAdd = viewModel::addTag, onToggle = viewModel::toggleTag)
@@ -218,6 +249,29 @@ fun AddEditTaskScreen(
             Spacer(Modifier.height(8.dp))
             ActionButton("KEEP EDITING", Modifier.fillMaxWidth(), onClick = { confirmLeave = false })
         }
+    }
+}
+
+@Composable
+private fun InterestSlider(value: Int, onChange: (Int) -> Unit) {
+    val p = LocalPalette.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onChange(it.roundToInt()) },
+            valueRange = 0f..10f,
+            steps = 9,
+            modifier = Modifier.weight(1f),
+            colors = SliderDefaults.colors(
+                thumbColor = p.accent,
+                activeTrackColor = p.accent,
+                inactiveTrackColor = p.line,
+                activeTickColor = p.background,
+                inactiveTickColor = p.textDim,
+            ),
+        )
+        Spacer(Modifier.width(12.dp))
+        MonoLabel(if (value == 0) "--" else "$value/10", color = if (value == 0) p.textDim else p.text, fontSize = 13.sp)
     }
 }
 

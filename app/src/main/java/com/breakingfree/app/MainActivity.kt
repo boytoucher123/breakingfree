@@ -57,7 +57,7 @@ import com.breakingfree.app.ui.MonoLabel
 enum class Tab(val label: String, val icon: ImageVector) {
     COUNTDOWN("COUNTDOWN", Icons.Filled.DateRange),
     CHAOS("CHAOS", Icons.Filled.Warning),
-    TODO("TODO", Icons.Filled.CheckCircle),
+    TASKS("TASKS", Icons.Filled.CheckCircle),
     ROADMAP("ROADMAP", Icons.Filled.Place),
     LATTICE("LATTICE", LatticeIcon),
 }
@@ -98,11 +98,11 @@ class MainActivity : ComponentActivity() {
 fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     val tab = Tab.entries[tabIndex]
-    // Kept up here so the TODO tab remembers where you were when you switch tabs.
+    // Kept up here so the Tasks tab remembers where you were when you switch tabs.
     val todoNav = rememberSaveable(saver = TodoNav.saver) { TodoNav() }
     LaunchedEffect(openTask) {
         if (openTask != null) {
-            tabIndex = Tab.TODO.ordinal
+            tabIndex = Tab.TASKS.ordinal
             todoNav.resetTo(if (openTask.isEmpty()) TodoRoute.Edit(null) else TodoRoute.Detail(openTask))
             onOpenTaskHandled()
         }
@@ -124,7 +124,7 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
                     when (t) {
                         Tab.COUNTDOWN -> CountdownScreen()
                         Tab.CHAOS -> ChaosScreen()
-                        Tab.TODO -> TodoTab(todoNav)
+                        Tab.TASKS -> TodoTab(todoNav)
                         Tab.ROADMAP -> RoadmapScreen()
                         Tab.LATTICE -> LatticeScreen()
                     }

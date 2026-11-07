@@ -5,7 +5,7 @@
     <!-- Exact alarms keep the home-screen countdown widgets ticking on time. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <!-- Todo task reminders. -->
+    <!-- Task reminders. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

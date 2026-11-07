@@ -51,7 +51,7 @@ fun TodoSettingsScreen(onBack: () -> Unit, viewModel: TodoSettingsViewModel = vi
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = p.text) }
-            MonoLabel("TODO // SETTINGS", Modifier.weight(1f), color = p.accent)
+            MonoLabel("TASKS // SETTINGS", Modifier.weight(1f), color = p.accent)
         }
         Box(Modifier.height(1.dp).fillMaxWidth().background(p.line))
 
@@ -71,13 +71,28 @@ fun TodoSettingsScreen(onBack: () -> Unit, viewModel: TodoSettingsViewModel = vi
                 viewModel.setWeights(w.copy(dueSoonHours = it))
             }
             MonoLabel("LATER DEADLINES FADE: DUE SOON × SOON HOURS ÷ HOURS LEFT", fontSize = 10.sp)
+            Spacer(Modifier.height(8.dp))
+            WeightSlider(viewModel::weightsSettled, "SIZE EFFECT", w.sizeEffect, 0f..2f, step = 0.1) { viewModel.setWeights(w.copy(sizeEffect = it)) }
+            MonoLabel(
+                "DEADLINE POINTS × SIZE. AT 1: TINY ×0.5, SMALL ×0.75, MEDIUM ×1, LARGE ×1.5, HUGE ×2. NO DEADLINE, NO EFFECT",
+                fontSize = 10.sp,
+            )
 
             Spacer(Modifier.height(18.dp))
             SectionHeader("SHUFFLE")
             MonoLabel("ONLY AFFECTS THE RANDOM PICK", Modifier.padding(top = 4.dp, bottom = 6.dp), fontSize = 10.sp)
             WeightSlider(viewModel::weightsSettled, "BASE CHANCE", w.shuffleBase, 0f..10f) { viewModel.setWeights(w.copy(shuffleBase = it)) }
             WeightSlider(viewModel::weightsSettled, "IN PROGRESS BOOST (×)", w.inProgressBoost, 1f..10f) { viewModel.setWeights(w.copy(inProgressBoost = it)) }
-            MonoLabel("CHANCE ∝ (BASE + IMPORTANCE) × BOOST IF IN PROGRESS", fontSize = 10.sp)
+            WeightSlider(viewModel::weightsSettled, "FULL INTEREST BOOST (+)", w.interestBoost, 0f..3f, step = 0.1) { viewModel.setWeights(w.copy(interestBoost = it)) }
+            MonoLabel("CHANCE ∝ (BASE + IMPORTANCE) × BOOST IF IN PROGRESS × (1 + INTEREST BOOST × INTEREST ÷ 10)", fontSize = 10.sp)
+
+            Spacer(Modifier.height(18.dp))
+            SectionHeader("EASY")
+            MonoLabel("PICKS SMALL TASKS, SMALLER AND EASIER ONES LIKELIER", Modifier.padding(top = 4.dp, bottom = 6.dp), fontSize = 10.sp)
+            WeightSlider(viewModel::weightsSettled, "BIGGEST SIZE (1 TINY .. 5 HUGE)", w.easyMaxSize, 1f..5f, step = 1.0, decimals = 0) {
+                viewModel.setWeights(w.copy(easyMaxSize = it))
+            }
+            MonoLabel("TASKS WITH NO SIZE SET ARE NEVER PICKED. INTEREST BOOSTS THIS TOO", fontSize = 10.sp)
             Spacer(Modifier.height(12.dp))
             ActionButton("RESET TO DEFAULTS", Modifier.fillMaxWidth(), enabled = w != Weights(), onClick = viewModel::resetWeights)
 

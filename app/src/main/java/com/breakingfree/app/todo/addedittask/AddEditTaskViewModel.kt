@@ -4,9 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.breakingfree.app.todo.TodoGraph
+import com.breakingfree.app.todo.data.Difficulty
 import com.breakingfree.app.todo.data.Priority
 import com.breakingfree.app.todo.data.Task
 import com.breakingfree.app.todo.data.TaskDraft
+import com.breakingfree.app.todo.data.TaskSize
 import com.breakingfree.app.todo.data.toDraft
 import com.breakingfree.app.todo.domain.Reminder
 import com.breakingfree.app.todo.domain.Tags
@@ -69,6 +71,9 @@ class AddEditTaskViewModel(app: Application, private val taskId: String?) : Andr
     fun updateStartAt(v: Long?) = edit { it.copy(startAt = v) }
     fun updateDays(v: Int) = edit { it.copy(days = v) }
     fun updateReminder(v: Reminder) = edit { it.copy(reminder = v) }
+    fun updateInterest(v: Int) = edit { it.copy(interest = v.coerceIn(0, 10)) }
+    fun updateSize(v: TaskSize) = edit { it.copy(size = v) }
+    fun updateDifficulty(v: Difficulty) = edit { it.copy(difficulty = v) }
 
     fun addTag(raw: String) {
         val tag = Tags.normalize(raw)

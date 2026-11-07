@@ -12,9 +12,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+// The file name, preference names and the `todo` package predate the rename to "Tasks". They stay
+// as they are so existing tasks, settings and placed widgets survive upgrades.
+
 /**
- * The todo feature's singletons (database, repository, settings), created on first use.
- * Plays the part Hilt played in the standalone TODO app.
+ * The Tasks feature's singletons (database, repository, settings), created on first use.
+ * Plays the part Hilt played in the old standalone TODO app.
  */
 class TodoGraph private constructor(context: Context) {
     private val app = context.applicationContext
@@ -22,7 +25,9 @@ class TodoGraph private constructor(context: Context) {
     /** For work that should outlive a screen: widget redraws, reminder scheduling. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val db = Room.databaseBuilder(app, TodoDatabase::class.java, "todo.db").build()
+    private val db = Room.databaseBuilder(app, TodoDatabase::class.java, "todo.db")
+        .addMigrations(TodoDatabase.MIGRATION_1_2)
+        .build()
 
     val weights = WeightsStore(app)
 
