@@ -157,7 +157,8 @@ private data class EditRequest(val node: RoadNode?, val presetParent: String? = 
 fun RoadmapScreen(vm: RoadmapViewModel = viewModel()) {
     val p = LocalPalette.current
     val books by vm.books.collectAsState()
-    val pager = rememberPagerState { books.size }
+    val pager = rememberPagerState(initialPage = vm.page.value.coerceIn(0, books.lastIndex)) { books.size }
+    LaunchedEffect(pager) { snapshotFlow { pager.currentPage }.collect { vm.setPage(it) } }
     val scope = rememberCoroutineScope()
     val book = books[pager.currentPage.coerceIn(0, books.lastIndex)]
     val map = book.map
@@ -194,7 +195,7 @@ fun RoadmapScreen(vm: RoadmapViewModel = viewModel()) {
                 ShiftingTitle("Roadmap", "ROADMAP", fontSize = 34.sp, textAlign = TextAlign.Start)
                 MonoLabel(
                     "${book.name.uppercase()}  //  $cleared / $total CLEARED",
-                    color = if (book.scheme == RoadScheme.BLOOD) p.accent else Color(book.scheme.midway),
+                    color = p.accent,
                 )
                 if (books.size > 1) {
                     Spacer(Modifier.height(6.dp))

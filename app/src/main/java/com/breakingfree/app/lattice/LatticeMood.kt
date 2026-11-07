@@ -3,40 +3,40 @@ package com.breakingfree.app.lattice
 import java.time.LocalTime
 
 /**
- * How alive the Lattice is at a given time of day. [vigor] runs from 0 (noon to 5pm: dim, almost
- * still) to 1 (around 2am: bright, strong blue, moving at full speed). [line] is the text under
+ * How alive the Lattice is at a given time of day. [vigor] runs from 0 (9am to 7pm: the dead zone,
+ * dull stone, almost still, no blue) to 1 (2am to 4am: glowing, strong blue, flowing at full speed). [line] is the text under
  * the title.
  */
 data class LatticeMood(val vigor: Float, val line: String)
 
 object LatticeMoods {
 
-    /** (hour of day, vigor) points; the curve is eased between them and wraps at midnight. */
+    /**
+     * (hour of day, vigor) points; the curve is eased between them and wraps at midnight.
+     * 9am-7pm is the dead zone (0). It stirs after 7pm, properly wakes from 9pm, and peaks 2-4am.
+     */
     private val CURVE = listOf(
-        0.0 to 0.88f,
+        0.0 to 0.82f,
         2.0 to 1.0f,
-        3.5 to 0.95f,
-        5.0 to 0.75f,
-        7.0 to 0.5f,
-        9.0 to 0.3f,
-        11.0 to 0.14f,
-        12.0 to 0.05f,
-        17.0 to 0.05f,
-        18.5 to 0.2f,
-        20.0 to 0.4f,
-        22.0 to 0.65f,
-        24.0 to 0.88f,
+        4.0 to 1.0f,
+        6.0 to 0.55f,
+        8.0 to 0.15f,
+        9.0 to 0.0f,
+        19.0 to 0.0f,
+        21.0 to 0.3f,
+        22.0 to 0.5f,
+        24.0 to 0.82f,
     )
 
     /** (from hour, line), in order through the day. Each line runs until the next one starts. */
     private val LINES = listOf(
-        1 to "The veil is thin...",
+        1 to "The veil is thinning...",
+        2 to "The veil is thin...",
         4 to "Dawn is stitching the veil shut...",
         7 to "The signal is fading...",
-        10 to "Only static now...",
-        12 to "There's nothing here, at least for now.",
-        17 to "Something stirs beneath the surface...",
-        19 to "The threads are waking...",
+        9 to "There's nothing here, at least for now.",
+        19 to "Something stirs beneath the surface...",
+        21 to "The threads are waking...",
         22 to "The noise is receding...",
     )
 

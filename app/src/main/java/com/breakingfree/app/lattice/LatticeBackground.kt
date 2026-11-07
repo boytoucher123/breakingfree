@@ -16,32 +16,37 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
 
-// Each colour runs from its dead-of-afternoon value to its 2am value as vigor goes 0 -> 1.
-private val SPACE_TOP = Color(0xFF010208)
-private val SPACE_MID_DIM = Color(0xFF03050C)
-private val SPACE_MID_LIVE = Color(0xFF061238)
-private val PLAIN_BLUE_DIM = Color(0xFF040812)
-private val PLAIN_BLUE_LIVE = Color(0xFF0A1F5C)
-private val LINE_BLUE_DIM = Color(0xFF2C3F63)
-private val LINE_BLUE_LIVE = Color(0xFF4F8DFF)
-private val LINE_VOID = Color(0xFF7C6CF0)
-private val NODE_BLUE_DIM = Color(0xFF5B6F92)
-private val NODE_BLUE_LIVE = Color(0xFF9CC6FF)
+// Each colour runs from its dead-zone value (stone: warm dark grey, no blue at all) to its 2-4am
+// value (deep, strong, glowing blue) as vigor goes 0 -> 1.
+private val BASE_STONE = Color(0xFF131210)
+private val BASE_LIVE = Color(0xFF04123A)
+private val WATER_A_STONE = Color(0xFF2A2520)
+private val WATER_A_LIVE = Color(0xFF0D4FB0)
+private val WATER_B_STONE = Color(0xFF221F1B)
+private val WATER_B_LIVE = Color(0xFF0A7FA8)
+private val LINE_STONE = Color(0xFF4A443D)
+private val LINE_LIVE = Color(0xFF5C9BFF)
+private val VOID_STONE = Color(0xFF574C43)
+private val VOID_LIVE = Color(0xFF7C6CF0)
+private val NODE_STONE = Color(0xFF837869)
+private val NODE_LIVE = Color(0xFFA8D0FF)
+private val STAR = Color(0xFFC9DCFF)
 
 private class Star(val x: Float, val y: Float, val size: Float, val speed: Float, val phase: Float)
 
 /**
- * The Lattice. Upper region: spacetime. A starfield, faint nebulae, and the grid bending into a
- * gravity well. That bleeds down a gradient into the plain blue lattice. The grid breathes on its own.
+ * The Lattice: a grid bending into a gravity well near the top, over a flat base with slow water
+ * currents, flowing caustics and (at night) stars. The grid breathes on its own.
  * [energy] (0..1) brightens it while you write, [ripple] (0..1, 1 = idle) sends a ring outward,
  * [resonance] (0..1, how much has been answered) permanently lifts the glow.
- * [vigor] (0..1, from [LatticeMoods]) is the time of day: at 1 it is bright, strongly blue and moves
- * at full speed; at 0 it is dim and barely moves.
+ * [vigor] (0..1, from [LatticeMoods]) is the time of day: at 1 it glows strong blue and flows at
+ * full speed; at 0 it is dull stone with no blue, barely moving.
  */
 @Composable
 fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Float, modifier: Modifier = Modifier) {
@@ -58,41 +63,59 @@ fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Flo
     }
     val stars = remember {
         val r = Random(2030)
-        List(170) { Star(r.nextFloat(), r.nextFloat() * 0.7f, 0.5f + r.nextFloat() * 1.4f, 0.4f + r.nextFloat() * 1.8f, r.nextFloat() * 6.28f) }
+        List(200) { Star(r.nextFloat(), r.nextFloat(), 0.5f + r.nextFloat() * 1.4f, 0.4f + r.nextFloat() * 1.8f, r.nextFloat() * 6.28f) }
     }
     Canvas(modifier) {
         val w = size.width
         val h = size.height
         val dp = density
         val v = vigor.coerceIn(0f, 1f)
-        val glow = 0.35f + 0.85f * v        // overall brightness: 1 is how it used to look
+        val glow = 0.35f + 0.85f * v        // overall brightness
         val sway = 0.2f + 0.8f * v          // how much things pulse and twinkle
-        val plainBlue = lerp(PLAIN_BLUE_DIM, PLAIN_BLUE_LIVE, v)
-        val lineBlue = lerp(LINE_BLUE_DIM, LINE_BLUE_LIVE, v)
-        val nodeBlue = lerp(NODE_BLUE_DIM, NODE_BLUE_LIVE, v)
-        drawRect(Brush.verticalGradient(0f to SPACE_TOP, 0.32f to lerp(SPACE_MID_DIM, SPACE_MID_LIVE, v), 0.68f to plainBlue, 1f to plainBlue))
+        val lineBlue = lerp(LINE_STONE, LINE_LIVE, v)
+        val nodeBlue = lerp(NODE_STONE, NODE_LIVE, v)
+        val voidColor = lerp(VOID_STONE, VOID_LIVE, v)
 
-        // How "spacetime" a given height is: 1 at the top, gone by ~62% down.
+        // One flat base: no gradient. Everything else floats over it.
+        drawRect(lerp(BASE_STONE, BASE_LIVE, v))
+
+        // Gravity well near the top bends the lattice; strongest there, gone ~62% down.
         fun space(y: Float): Float {
             val t = (1f - y / (h * 0.62f)).coerceIn(0f, 1f)
             return t * t * (3f - 2f * t)
         }
 
-        // nebulae
-        drawCircle(
-            Brush.radialGradient(listOf(Color(0xFF3A1E7A).copy(alpha = 0.28f * glow), Color.Transparent), Offset(w * 0.22f, h * 0.12f), w * 0.55f),
-            w * 0.55f, Offset(w * 0.22f, h * 0.12f),
-        )
-        drawCircle(
-            Brush.radialGradient(listOf(Color(0xFF1A4DB0).copy(alpha = 0.3f * glow), Color.Transparent), Offset(w * 0.85f, h * 0.28f), w * 0.5f),
-            w * 0.5f, Offset(w * 0.85f, h * 0.28f),
-        )
+        // Water: big soft currents drifting across the whole screen.
+        for (k in 0 until 5) {
+            val cx = w * (0.5f + 0.48f * sin(time * 0.07f * (k + 1) + k * 1.7f))
+            val cy = h * (0.5f + 0.46f * cos(time * 0.05f * (k + 2) + k * 2.3f))
+            val r = w * (0.6f + 0.18f * sin(time * 0.11f + k))
+            val col = lerp(if (k % 2 == 0) WATER_A_STONE else WATER_B_STONE, if (k % 2 == 0) WATER_A_LIVE else WATER_B_LIVE, v)
+            drawCircle(Brush.radialGradient(listOf(col.copy(alpha = 0.26f + 0.14f * v), Color.Transparent), Offset(cx, cy), r), r, Offset(cx, cy))
+        }
+        // Caustics: wavering bands of light that slowly flow down the screen.
+        val bands = 9
+        val bandGap = h / bands
+        val drift = (time * 14f * dp) % bandGap
+        for (b in -1 until bands + 1) {
+            val y0 = b * bandGap + drift
+            val path = Path()
+            var x = 0f
+            val stepX = 14f * dp
+            while (x <= w + stepX) {
+                val y = y0 +
+                    10f * dp * sin(x / (70f * dp) + time * 0.9f + b) +
+                    6f * dp * sin(x / (33f * dp) - time * 0.6f + b * 0.7f)
+                if (x == 0f) path.moveTo(x, y) else path.lineTo(x, y)
+                x += stepX
+            }
+            drawPath(path, lerp(NODE_STONE, NODE_LIVE, v).copy(alpha = 0.03f + 0.07f * v), style = Stroke(width = (1.5f + 2.5f * v) * dp))
+        }
 
-        // stars
-        stars.forEach { s ->
-            val y = s.y * h
-            val a = space(y) * (0.35f + 0.65f * sway * (0.5f + 0.5f * sin(time * s.speed + s.phase))) * glow.coerceAtMost(1f)
-            if (a > 0.02f) drawCircle(Color(0xFFC9D6FF).copy(alpha = a * 0.8f), s.size * dp * 0.8f, Offset(s.x * w, y))
+        // Stars, everywhere, only when the lattice is awake.
+        if (v > 0.02f) stars.forEach { s ->
+            val a = v * (0.35f + 0.65f * sway * (0.5f + 0.5f * sin(time * s.speed + s.phase)))
+            drawCircle(STAR.copy(alpha = a * 0.75f), s.size * dp * 0.8f, Offset(s.x * w, s.y * h))
         }
 
         val well = Offset(w * 0.5f, h * 0.2f)
@@ -128,7 +151,7 @@ fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Flo
                     } else first = true
                     y += seg
                 }
-                drawPath(path, lerp(lineBlue, LINE_VOID, 0.6f * space(h * 0.15f)).copy(alpha = baseAlpha.coerceAtMost(0.75f)),
+                drawPath(path, lerp(lineBlue, voidColor, 0.6f * space(h * 0.15f)).copy(alpha = baseAlpha.coerceAtMost(0.75f)),
                     style = Stroke(width = 1f * dp))
             }
             c += step
@@ -149,7 +172,7 @@ fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Flo
                     val ring = if (ripple < 1f) (1f - abs(dist - ringR) / (70f * dp)).coerceIn(0f, 1f) * (1f - ripple) else 0f
                     val a = ((0.10f + 0.35f * wave * (0.4f + 0.6f * breathe)) * glow + 0.35f * energy + 0.2f * resonance + 0.9f * ring)
                         .coerceIn(0f, 1f)
-                    val col = lerp(nodeBlue, LINE_VOID, 0.5f * space(gy))
+                    val col = lerp(nodeBlue, voidColor, 0.5f * space(gy))
                     drawNode(p, (1.4f + 2.2f * wave + 3f * ring) * dp, col, a)
                 }
                 gy += half; j++

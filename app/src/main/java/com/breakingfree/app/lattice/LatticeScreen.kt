@@ -51,6 +51,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -78,11 +83,25 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-private fun questionStyle(size: Int = 22) =
-    TextStyle(fontFamily = Fonts.Quiet, fontStyle = FontStyle.Italic, fontSize = size.sp, lineHeight = (size + 6).sp)
+/** Blue glow around the Lattice's text, from nothing in the dead zone to strong at 2-4am. */
+private val LocalLatticeGlow = staticCompositionLocalOf<Shadow?> { null }
 
+private fun glowFor(vigor: Float): Shadow? {
+    val g = ((vigor - 0.45f) / 0.55f).coerceIn(0f, 1f)
+    if (g <= 0f) return null
+    return Shadow(color = Color(0xFF5CA8FF).copy(alpha = 0.95f * g), offset = Offset.Zero, blurRadius = 6f + 26f * g)
+}
+
+@Composable
+private fun questionStyle(size: Int = 22) =
+    TextStyle(
+        fontFamily = Fonts.Quiet, fontStyle = FontStyle.Italic, fontSize = size.sp, lineHeight = (size + 6).sp,
+        shadow = LocalLatticeGlow.current,
+    )
+
+@Composable
 private fun answerStyle(p: Palette) =
-    TextStyle(fontFamily = Fonts.Quiet, fontSize = 20.sp, lineHeight = 25.sp, color = p.text)
+    TextStyle(fontFamily = Fonts.Quiet, fontSize = 20.sp, lineHeight = 25.sp, color = p.text, shadow = LocalLatticeGlow.current)
 
 private fun roman(n: Int): String {
     val v = intArrayOf(1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1)
@@ -97,7 +116,7 @@ private fun QuietLabel(text: String, modifier: Modifier = Modifier, color: andro
     val p = LocalPalette.current
     Text(
         text, modifier = modifier, color = color ?: p.textDim,
-        style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 14.sp, letterSpacing = 2.sp),
+        style = TextStyle(fontFamily = Fonts.Quiet, fontSize = 14.sp, letterSpacing = 2.sp, shadow = LocalLatticeGlow.current),
     )
 }
 
@@ -136,18 +155,14 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
         }
     }
 
-    // Time of day: how alive the lattice is, and the line under the title. Checked every 30s.
-    val mood by produceState(LatticeMoods.now()) {
-        while (true) {
-            delay(30_000)
-            value = LatticeMoods.now()
-        }
-    }
+    // Time of day: how alive the lattice is, and the line under the title.
+    val mood = rememberLatticeMood()
 
     LaunchedEffect(Unit) { vm.shuffle() }
     LaunchedEffect(kept) { if (kept) { delay(2600); kept = false } }
     BackHandler(enabled = mode != MODE_QUESTIONS) { mode = MODE_QUESTIONS }
 
+    CompositionLocalProvider(LocalLatticeGlow provides glowFor(mood.vigor)) {
     Box(Modifier.fillMaxSize()) {
         LatticeBackground(energy.value, ripple.value, resonance, mood.vigor, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize()) {
@@ -204,6 +219,7 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
                     .padding(horizontal = 26.dp, vertical = 14.dp)
             ) { Text("kept. the lattice remembers.", style = questionStyle(20), color = p.text) }
         }
+    }
     }
 }
 

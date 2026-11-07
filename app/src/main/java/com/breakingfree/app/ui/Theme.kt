@@ -10,6 +10,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -51,16 +52,46 @@ val RedPalette = Palette(
     line = Color(0xFF3A1416),
 )
 
+/** The Lattice at its most awake (2-4am): strong, glowing blue. */
 val BluePalette = Palette(
-    background = Color(0xFF040A18),
-    surface = Color(0xFF0A1428),
-    surfaceHigh = Color(0xFF0F1C38),
-    accent = Color(0xFF5C8FE0),
-    accentDim = Color(0xFF26457A),
-    text = Color(0xFF9CB4DA),
-    textDim = Color(0xFF5A6E92),
-    line = Color(0xFF1A2B4C),
+    background = Color(0xFF04102E),
+    surface = Color(0xFF0A1838),
+    surfaceHigh = Color(0xFF102248),
+    accent = Color(0xFF6FA8FF),
+    accentDim = Color(0xFF2A5096),
+    text = Color(0xFFB8D2FA),
+    textDim = Color(0xFF6A84B4),
+    line = Color(0xFF1C3060),
 )
+
+/** The Lattice in its dead zone (9am-7pm): dark, earthy stone. No blue. */
+val StonePalette = Palette(
+    background = Color(0xFF0F0E0C),
+    surface = Color(0xFF181613),
+    surfaceHigh = Color(0xFF221F1B),
+    accent = Color(0xFF9A8E7E),
+    accentDim = Color(0xFF5A5148),
+    text = Color(0xFFB8AE9F),
+    textDim = Color(0xFF7A7064),
+    line = Color(0xFF2C2824),
+)
+
+fun lerpPalette(a: Palette, b: Palette, t: Float): Palette {
+    val f = t.coerceIn(0f, 1f)
+    return Palette(
+        background = lerp(a.background, b.background, f),
+        surface = lerp(a.surface, b.surface, f),
+        surfaceHigh = lerp(a.surfaceHigh, b.surfaceHigh, f),
+        accent = lerp(a.accent, b.accent, f),
+        accentDim = lerp(a.accentDim, b.accentDim, f),
+        text = lerp(a.text, b.text, f),
+        textDim = lerp(a.textDim, b.textDim, f),
+        line = lerp(a.line, b.line, f),
+    )
+}
+
+/** The Lattice palette at a given vigor: stone when dead, blue when awake. */
+fun latticePalette(vigor: Float) = lerpPalette(StonePalette, BluePalette, vigor)
 
 val LocalPalette = staticCompositionLocalOf { RedPalette }
 
@@ -68,8 +99,7 @@ val LocalPalette = staticCompositionLocalOf { RedPalette }
 private fun animated(c: Color): Color = animateColorAsState(c, tween(900), label = "palette").value
 
 @Composable
-fun BreakingFreeTheme(quiet: Boolean, content: @Composable () -> Unit) {
-    val target = if (quiet) BluePalette else RedPalette
+fun BreakingFreeTheme(target: Palette = RedPalette, content: @Composable () -> Unit) {
     val p = Palette(
         background = animated(target.background),
         surface = animated(target.surface),
