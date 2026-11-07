@@ -32,7 +32,7 @@ data class AddEditTaskUiState(
     val isTaskSaved: Boolean = false,
 ) {
     val isDirty get() = draft != original
-    val willBeUnfinished get() = draft.tags.isEmpty() || draft.priority == Priority.NONE
+    val willBeUnfinished get() = draft.missingFields.isNotEmpty()
 }
 
 class AddEditTaskViewModel(app: Application, private val taskId: String?) : AndroidViewModel(app) {
@@ -71,7 +71,8 @@ class AddEditTaskViewModel(app: Application, private val taskId: String?) : Andr
     fun updateStartAt(v: Long?) = edit { it.copy(startAt = v) }
     fun updateDays(v: Int) = edit { it.copy(days = v) }
     fun updateReminder(v: Reminder) = edit { it.copy(reminder = v) }
-    fun updateInterest(v: Int) = edit { it.copy(interest = v.coerceIn(0, 10)) }
+    fun updateInterest(v: Int?) = edit { it.copy(interest = v?.coerceIn(-5, 5)) }
+    fun updateWindow(start: Int, end: Int) = edit { it.copy(windowStart = start, windowEnd = end) }
     fun updateSize(v: TaskSize) = edit { it.copy(size = v) }
     fun updateDifficulty(v: Difficulty) = edit { it.copy(difficulty = v) }
 

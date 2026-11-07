@@ -86,9 +86,9 @@ import java.util.Date
 /** Blue glow around the Lattice's text, from nothing in the dead zone to strong at 2-4am. */
 private val LocalLatticeGlow = staticCompositionLocalOf<Shadow?> { null }
 
-private fun glowFor(vigor: Float): Shadow? {
-    val g = ((vigor - 0.45f) / 0.55f).coerceIn(0f, 1f)
-    if (g <= 0f) return null
+private fun glowFor(glow: Float): Shadow? {
+    val g = glow.coerceIn(0f, 1f)
+    if (g <= 0.01f) return null
     return Shadow(color = Color(0xFF5CA8FF).copy(alpha = 0.95f * g), offset = Offset.Zero, blurRadius = 6f + 26f * g)
 }
 
@@ -162,9 +162,9 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
     LaunchedEffect(kept) { if (kept) { delay(2600); kept = false } }
     BackHandler(enabled = mode != MODE_QUESTIONS) { mode = MODE_QUESTIONS }
 
-    CompositionLocalProvider(LocalLatticeGlow provides glowFor(mood.vigor)) {
+    CompositionLocalProvider(LocalLatticeGlow provides glowFor(mood.glow)) {
     Box(Modifier.fillMaxSize()) {
-        LatticeBackground(energy.value, ripple.value, resonance, mood.vigor, Modifier.fillMaxSize())
+        LatticeBackground(energy.value, ripple.value, resonance, mood.vigor, mood.waves, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier
@@ -195,7 +195,7 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
                     )
                 }
                 if (mode == MODE_QUESTIONS) {
-                    IconButton(onClick = vm::shuffle) { Icon(Icons.Filled.Refresh, "Shuffle", tint = p.textDim) }
+                    if (mood.open) IconButton(onClick = vm::shuffle) { Icon(Icons.Filled.Refresh, "Shuffle", tint = p.textDim) }
                     IconButton(onClick = { mode = MODE_ARCHIVE }) { Icon(Icons.Filled.List, "Kept reflections", tint = p.textDim) }
                     IconButton(onClick = { mode = MODE_MANAGE }) { Icon(Icons.Filled.Settings, "Edit questions", tint = p.textDim) }
                 }
@@ -204,8 +204,11 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
             when (mode) {
                 MODE_ARCHIVE -> Archive(s.entries, vm::deleteEntry)
                 MODE_MANAGE -> ManageQuestions(vm, s.questions)
-                else -> QuestionPager(vm, s, order, onReact = { react() },
-                    onKeep = { if (vm.keep()) { kept = true; react(strong = true) } })
+                // Daytime (9am-7pm): no questions at all, just the stone lattice.
+                else -> if (mood.open) {
+                    QuestionPager(vm, s, order, onReact = { react() },
+                        onKeep = { if (vm.keep()) { kept = true; react(strong = true) } })
+                }
             }
         }
         AnimatedVisibility(

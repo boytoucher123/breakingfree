@@ -27,12 +27,17 @@ data class LocalTask(
     val systemKind: String?,
     val createdAt: Long,
     val completedAt: Long?,
-    /** 0..10. Added in database version 2. */
+    /** Version 2's 0..10 interest. No longer used (see [interestLevel]); kept so the table matches. */
     @ColumnInfo(defaultValue = "0") val interest: Int = 0,
     /** [com.breakingfree.app.todo.data.TaskSize] level. Added in version 2. */
     @ColumnInfo(defaultValue = "0") val size: Int = 0,
     /** [com.breakingfree.app.todo.data.Difficulty] level. Added in version 2. */
     @ColumnInfo(defaultValue = "0") val difficulty: Int = 0,
+    /** Interest -5..5, null = not set. Added in version 3. */
+    val interestLevel: Int? = null,
+    /** Time-of-day window in minutes, -1 = any. Added in version 3. */
+    @ColumnInfo(defaultValue = "-1") val windowStart: Int = -1,
+    @ColumnInfo(defaultValue = "-1") val windowEnd: Int = -1,
 )
 
 /** One tag on one task. */

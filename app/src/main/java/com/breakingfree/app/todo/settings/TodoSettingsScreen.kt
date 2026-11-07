@@ -83,8 +83,8 @@ fun TodoSettingsScreen(onBack: () -> Unit, viewModel: TodoSettingsViewModel = vi
             MonoLabel("ONLY AFFECTS THE RANDOM PICK", Modifier.padding(top = 4.dp, bottom = 6.dp), fontSize = 10.sp)
             WeightSlider(viewModel::weightsSettled, "BASE CHANCE", w.shuffleBase, 0f..10f) { viewModel.setWeights(w.copy(shuffleBase = it)) }
             WeightSlider(viewModel::weightsSettled, "IN PROGRESS BOOST (×)", w.inProgressBoost, 1f..10f) { viewModel.setWeights(w.copy(inProgressBoost = it)) }
-            WeightSlider(viewModel::weightsSettled, "FULL INTEREST BOOST (+)", w.interestBoost, 0f..3f, step = 0.1) { viewModel.setWeights(w.copy(interestBoost = it)) }
-            MonoLabel("CHANCE ∝ (BASE + IMPORTANCE) × BOOST IF IN PROGRESS × (1 + INTEREST BOOST × INTEREST ÷ 10)", fontSize = 10.sp)
+            WeightSlider(viewModel::weightsSettled, "INTEREST EFFECT (±)", w.interestBoost, 0f..2f, step = 0.1) { viewModel.setWeights(w.copy(interestBoost = it)) }
+            MonoLabel("CHANCE ∝ (BASE + IMPORTANCE) × BOOST IF IN PROGRESS × (1 + EFFECT × INTEREST ÷ 5). INTEREST −5 .. +5, NEVER BELOW ×0.1", fontSize = 10.sp)
 
             Spacer(Modifier.height(18.dp))
             SectionHeader("EASY")

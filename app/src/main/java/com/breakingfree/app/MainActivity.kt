@@ -118,12 +118,12 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
     val books by roadmaps.books.collectAsState()
     val roadPage by roadmaps.page.collectAsState()
     val mood = rememberLatticeMood()
-    val palette = when (tab) {
+    fun paletteFor(t: Tab) = when (t) {
         Tab.ROADMAP -> (books.getOrNull(roadPage) ?: books.first()).scheme.palette()
         Tab.LATTICE -> latticePalette(mood.vigor)
         else -> RedPalette
     }
-    BreakingFreeTheme(palette) {
+    BreakingFreeTheme(paletteFor(tab)) {
         val p = LocalPalette.current
         Column(
             Modifier
@@ -137,12 +137,16 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
                     .statusBarsPadding()
             ) {
                 Crossfade(targetState = tab, animationSpec = tween(350), label = "tab") { t ->
-                    when (t) {
-                        Tab.COUNTDOWN -> CountdownScreen()
-                        Tab.CHAOS -> ChaosScreen()
-                        Tab.TASKS -> TodoTab(todoNav)
-                        Tab.ROADMAP -> RoadmapScreen()
-                        Tab.LATTICE -> LatticeScreen()
+                    // Each tab keeps its own colours while it fades in or out, so one tab's
+                    // palette never bleeds onto another's text.
+                    BreakingFreeTheme(paletteFor(t)) {
+                        when (t) {
+                            Tab.COUNTDOWN -> CountdownScreen()
+                            Tab.CHAOS -> ChaosScreen()
+                            Tab.TASKS -> TodoTab(todoNav)
+                            Tab.ROADMAP -> RoadmapScreen()
+                            Tab.LATTICE -> LatticeScreen()
+                        }
                     }
                 }
             }
