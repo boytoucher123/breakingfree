@@ -144,8 +144,7 @@ fun AddEditTaskScreen(
             if (s.willBeUnfinished) {
                 Spacer(Modifier.height(10.dp))
                 MonoLabel(
-                    "NO " + listOfNotNull("PRIORITY".takeIf { d.priority == Priority.NONE }, "TAGS".takeIf { d.tags.isEmpty() })
-                        .joinToString(" OR ") + " // SAVES AS UNFINISHED, NOT SUGGESTED UNTIL FILLED IN",
+                    "NO " + d.missingFields.joinToString(", ") + " // SAVES AS UNFINISHED, NOT SUGGESTED UNTIL FILLED IN",
                     color = p.accent, fontSize = 10.sp,
                 )
             }
@@ -161,7 +160,7 @@ fun AddEditTaskScreen(
 
             Spacer(Modifier.height(22.dp))
             SectionHeader("INTEREST")
-            MonoLabel("HOW MUCH YOU WANT TO DO IT // NUDGES RANDOM AND EASY", Modifier.padding(top = 4.dp), fontSize = 10.sp)
+            MonoLabel("−5 REALLY DON'T WANT TO // 0 APATHETIC // +5 REALLY WANT TO", Modifier.padding(top = 4.dp), fontSize = 10.sp)
             InterestSlider(d.interest, viewModel::updateInterest)
 
             Spacer(Modifier.height(16.dp))
@@ -169,7 +168,7 @@ fun AddEditTaskScreen(
             MonoLabel("ROUGHLY HOW BIG // BIGGER MAKES A DEADLINE COUNT MORE", Modifier.padding(top = 4.dp), fontSize = 10.sp)
             Spacer(Modifier.height(10.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TaskSize.entries.forEach { sz ->
+                TaskSize.entries.filter { it != TaskSize.UNSET }.forEach { sz ->
                     TagChip(sz.label, selected = d.size == sz, onClick = { viewModel.updateSize(sz) })
                 }
             }
@@ -179,7 +178,7 @@ fun AddEditTaskScreen(
             MonoLabel("HOW HARD IT IS // EASIER COMES UP MORE ON EASY", Modifier.padding(top = 4.dp), fontSize = 10.sp)
             Spacer(Modifier.height(10.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Difficulty.entries.forEach { df ->
+                Difficulty.entries.filter { it != Difficulty.UNSET }.forEach { df ->
                     TagChip(df.label, selected = d.difficulty == df, onClick = { viewModel.updateDifficulty(df) })
                 }
             }
@@ -202,9 +201,11 @@ fun AddEditTaskScreen(
 
             Spacer(Modifier.height(22.dp))
             SectionHeader("ONLY ON")
-            MonoLabel("NONE TICKED = ANY DAY // OTHER DAYS IT'S BLOCKED", Modifier.padding(top = 4.dp), fontSize = 10.sp)
+            MonoLabel("NONE TICKED = ANY DAY // OUTSIDE THESE DAYS AND HOURS IT'S BLOCKED", Modifier.padding(top = 4.dp), fontSize = 10.sp)
             Spacer(Modifier.height(10.dp))
             WeekdayPicker(d.days, viewModel::updateDays)
+            Spacer(Modifier.height(10.dp))
+            WindowEditor(d.windowStart, d.windowEnd, viewModel::updateWindow)
 
             Spacer(Modifier.height(22.dp))
             SectionHeader("REMINDERS")
@@ -252,27 +253,66 @@ fun AddEditTaskScreen(
     }
 }
 
+/** −5..+5, with "not set" (null) shown separately from 0 (apathetic). Touching the slider sets it. */
 @Composable
-private fun InterestSlider(value: Int, onChange: (Int) -> Unit) {
+private fun InterestSlider(value: Int?, onChange: (Int?) -> Unit) {
     val p = LocalPalette.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Slider(
-            value = value.toFloat(),
+            value = (value ?: 0).toFloat(),
             onValueChange = { onChange(it.roundToInt()) },
-            valueRange = 0f..10f,
+            valueRange = -5f..5f,
             steps = 9,
             modifier = Modifier.weight(1f),
             colors = SliderDefaults.colors(
-                thumbColor = p.accent,
-                activeTrackColor = p.accent,
+                thumbColor = if (value == null) p.textDim else p.accent,
+                activeTrackColor = if (value == null) p.line else p.accent,
                 inactiveTrackColor = p.line,
                 activeTickColor = p.background,
                 inactiveTickColor = p.textDim,
             ),
         )
         Spacer(Modifier.width(12.dp))
-        MonoLabel(if (value == 0) "--" else "$value/10", color = if (value == 0) p.textDim else p.text, fontSize = 13.sp)
+        MonoLabel(
+            when {
+                value == null -> "NOT SET"
+                value > 0 -> "+$value"
+                else -> "$value"
+            },
+            color = if (value == null) p.accent else p.text, fontSize = 13.sp,
+        )
     }
+    if (value == null) {
+        TagChip("SET TO 0 // APATHETIC", selected = false, onClick = { onChange(0) })
+    }
+}
+
+/** Optional time-of-day window for ONLY ON. */
+@Composable
+private fun WindowEditor(start: Int, end: Int, onChange: (Int, Int) -> Unit) {
+    val p = LocalPalette.current
+    var pickStart by remember { mutableStateOf(false) }
+    var pickEnd by remember { mutableStateOf(false) }
+    val set = start >= 0 && end >= 0
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (!set) {
+            TagChip("ANY TIME", selected = true, onClick = {})
+            TagChip("SET HOURS", selected = false, onClick = { onChange(9 * 60, 17 * 60) })
+        } else {
+            MonoLabel("FROM")
+            ActionButton(ReminderPlanner.formatMinute(start), onClick = { pickStart = true })
+            MonoLabel("TO")
+            ActionButton(ReminderPlanner.formatMinute(end), onClick = { pickEnd = true })
+            ActionButton("ANY", onClick = { onChange(-1, -1) })
+        }
+    }
+    if (set && start == end) {
+        MonoLabel("START AND END ARE THE SAME // COUNTS AS ANY TIME", Modifier.padding(top = 6.dp), color = p.accent, fontSize = 10.sp)
+    } else if (set && end < start) {
+        MonoLabel("RUNS PAST MIDNIGHT", Modifier.padding(top = 6.dp), fontSize = 10.sp)
+    }
+    if (pickStart) TimeDialog(start, onDismiss = { pickStart = false }) { onChange(it, end); pickStart = false }
+    if (pickEnd) TimeDialog(end, onDismiss = { pickEnd = false }) { onChange(start, it); pickEnd = false }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

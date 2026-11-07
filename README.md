@@ -11,25 +11,25 @@ An Android app (Kotlin + Jetpack Compose) in red and black, with type that shift
   - **Several roadmaps**: swipe left and right between them. The first is called *General*. ⋮ → New roadmap / Rename / Delete this roadmap.
   - **Colours**: ⋮ → Colours. Pick a preset (Blood, Ice, Venom, Gold, Ash) or set each of the six colours (origin, midway, end goal, beyond, deeper, abyss) yourself. The tab's buttons, page squares and the line above the tab bar take on the roadmap's colours.
   - ⋮ → Restore defaults or Clear this roadmap affect only the roadmap on screen.
-- **The Lattice**: one question at a time, laid over a living lattice that bends into spacetime near the top and reacts as you write. It follows the clock. From 9am to 7pm is the dead zone: dull earthy stone, nearly still, no blue ("There's nothing here, at least for now."). It stirs after 7pm and properly wakes from 9pm. From 2am to 4am it is fully alive: deep glowing blue, the text glowing, water-like currents and stars flowing over a flat background ("The veil is thin..."). The line under the title changes through the night. You can add or delete questions (text-box or two-column table) with the gear icon. Defaults are in `app/src/main/assets/lattice_questions.json`.
+- **The Lattice**: one question at a time, laid over a living lattice that bends into spacetime near the top and reacts as you write. It follows the clock. From 9am to 7pm is the dead zone: dull earthy stone, nearly still, no blue, and the questions are closed ("There's nothing here, at least for now."). Hints of blue from 7pm, building from 9pm, fully blue from midnight with the text glowing a little. From 2am to 4am the text glows strongly and the whole background gently warps, as slow wavefronts drift through it in every direction (Android 13+; older phones get a faint shimmer instead). You can add or delete questions (text-box or two-column table) with the gear icon. Defaults are in `app/src/main/assets/lattice_questions.json`.
 
 ## Tasks
 
 - **Tasks** have:
   - a title and description
   - a priority
-  - an **interest** level, 0 to 10 (higher is drawn a little more often by Random and Easy)
+  - an **interest** level, −5 (really don't want to) to +5 (really want to), 0 apathetic; it nudges Random and Easy up or down
   - a **size**, tiny to huge (bigger makes its deadline count for more; no deadline, no effect)
   - a **difficulty**, trivial to brutal (used by Easy)
   - tags (spaces and hyphens become `_`)
   - a due date and time
   - an **available from** date
-  - **only on** weekdays
+  - **only on** weekdays and/or hours of the day (e.g. 18:00–21:00, may run past midnight)
   - **do after** prerequisites
   - a **reminder**
 - **Reminders** fire every chosen day, either at a set time or once at a random moment inside a time window. Each reminder notification has a **Done** button.
 - **Status** is **To do**, **In progress** or **Done**. An in-progress task shows as **Blocked** while it can't be worked on, for example on a day it isn't allowed or while a prerequisite is still open. It goes back to In progress by itself.
-- **Unfinished**: a task saved without a priority or without tags goes to the **Unfinished** area and is never suggested.
+- **Unfinished**: a task missing any of priority, tags, size, difficulty or interest goes to the **Unfinished** area and is never suggested.
   - While anything is unfinished, a system task "Finish N unfinished tasks" appears. Its page lists them so you can fill them in.
   - The system task resolves itself once the area is empty.
 - **Next task widget**: long-press the home screen → Widgets → BREAKING FREE → *Next task*.

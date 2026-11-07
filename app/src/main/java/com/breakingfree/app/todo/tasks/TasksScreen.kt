@@ -46,7 +46,7 @@ import com.breakingfree.app.todo.data.TaskSize
 import com.breakingfree.app.todo.data.Task
 import com.breakingfree.app.todo.domain.DisplayStatus
 import com.breakingfree.app.todo.domain.NextMode
-import com.breakingfree.app.todo.domain.Weekdays
+import com.breakingfree.app.todo.domain.onlyOnLabel
 import com.breakingfree.app.todo.ui.SectionHeader
 import com.breakingfree.app.todo.ui.StatusBadge
 import com.breakingfree.app.todo.util.formatDue
@@ -130,7 +130,7 @@ fun TasksScreen(
             if (state.filter == TasksFilterType.UNFINISHED && state.items.isNotEmpty()) {
                 item {
                     MonoLabel(
-                        "MISSING A PRIORITY OR TAGS // NOT SUGGESTED UNTIL FINISHED",
+                        "MISSING PRIORITY, TAGS, SIZE, DIFFICULTY OR INTEREST // NOT SUGGESTED UNTIL FINISHED",
                         Modifier.padding(horizontal = 20.dp).padding(bottom = 6.dp),
                         fontSize = 10.sp,
                     )
@@ -239,7 +239,7 @@ internal fun metaLine(task: Task): String = listOfNotNull(
     task.priority.takeIf { it != Priority.NONE && !task.isSystem }?.let { "${it.label} PRIORITY" },
     task.size.takeIf { it != TaskSize.UNSET }?.let { "~${it.label}" },
     task.difficulty.takeIf { it != Difficulty.UNSET }?.let { it.label },
-    task.days.takeIf { it != Weekdays.ANY }?.let { Weekdays.label(it) },
+    onlyOnLabel(task.days, task.windowStart, task.windowEnd),
     task.tags.takeIf { it.isNotEmpty() }?.joinToString(" ") { "#$it" },
 ).joinToString("  //  ")
 

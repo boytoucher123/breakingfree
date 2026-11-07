@@ -41,10 +41,14 @@ class EffortRulesTest {
     fun interestRaisesDrawWeight() {
         val w = Weights()
         val bored = Recommender.weight(c("a", interest = 0), now, w)
-        val keen = Recommender.weight(c("b", interest = 10), now, w)
+        val keen = Recommender.weight(c("b", interest = 5), now, w)
+        val loath = Recommender.weight(c("c", interest = -5), now, w)
         assertEquals(bored * (1 + w.interestBoost), keen, 1e-9)
+        assertEquals(bored * (1 - w.interestBoost), loath, 1e-9)
+        // Never below 0.1 however strong the effect.
+        assertEquals(bored * 0.1, Recommender.weight(c("d", interest = -5), now, Weights(interestBoost = 2.0)), 1e-9)
         // But not importance: Most important stays predictable.
-        assertEquals(Recommender.score(c("a", interest = 0), now, w), Recommender.score(c("b", interest = 10), now, w), 1e-9)
+        assertEquals(Recommender.score(c("a", interest = 0), now, w), Recommender.score(c("b", interest = 5), now, w), 1e-9)
     }
 
     @Test
@@ -89,6 +93,17 @@ class EffortRulesTest {
         val r = NextTask.resolve(tasks, sel, now)
         assertNull(r.task)
         assertEquals(2, r.total)
+    }
+
+    @Test
+    fun timeWindowBlocksOutsideItsHours() {
+        // now is 01:46 UTC.
+        fun w(start: Int, end: Int) = Candidate("t", 2, null, null, false, windowStart = start, windowEnd = end)
+        assertNull(Recommender.blockReason(w(60, 120), emptySet(), now, utc))          // 01:00-02:00
+        assertEquals(Block.WRONG_TIME, Recommender.blockReason(w(9 * 60, 17 * 60), emptySet(), now, utc))
+        assertNull(Recommender.blockReason(w(22 * 60, 2 * 60), emptySet(), now, utc))  // wraps midnight
+        assertNull(Recommender.blockReason(w(-1, -1), emptySet(), now, utc))
+        assertEquals("09:00–17:00", onlyOnLabel(0, 9 * 60, 17 * 60))
     }
 
     @Test

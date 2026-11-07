@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.lerp
 import kotlin.math.abs
 import kotlin.math.cos
@@ -46,10 +48,11 @@ private class Star(val x: Float, val y: Float, val size: Float, val speed: Float
  * [energy] (0..1) brightens it while you write, [ripple] (0..1, 1 = idle) sends a ring outward,
  * [resonance] (0..1, how much has been answered) permanently lifts the glow.
  * [vigor] (0..1, from [LatticeMoods]) is the time of day: at 1 it glows strong blue and flows at
- * full speed; at 0 it is dull stone with no blue, barely moving.
+ * full speed; at 0 it is dull stone with no blue, barely moving. [waves] (0..1) fades in a slow,
+ * soft distortion field: wavefronts drifting across the background in several directions.
  */
 @Composable
-fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Float, modifier: Modifier = Modifier) {
+fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Float, waves: Float = 0f, modifier: Modifier = Modifier) {
     // Animation clock. It runs slower when the lattice is weak, so motion slows rather than jumps.
     val speed by rememberUpdatedState(0.15f + 0.85f * vigor.coerceIn(0f, 1f))
     val time by produceState(0f) {
@@ -65,7 +68,16 @@ fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Flo
         val r = Random(2030)
         List(200) { Star(r.nextFloat(), r.nextFloat(), 0.5f + r.nextFloat() * 1.4f, 0.4f + r.nextFloat() * 1.8f, r.nextFloat() * 6.28f) }
     }
-    Canvas(modifier) {
+    val distortion = remember { if (android.os.Build.VERSION.SDK_INT >= 33) Distortion() else null }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    Canvas(
+        modifier.graphicsLayer {
+            // Android 13+: the whole background ripples gently, slightly soft, 2-4am.
+            renderEffect = if (distortion != null && waves > 0.01f) {
+                distortion.effect(size.width, size.height, time, waves * 9f * density, waves * 1.2f * density)
+            } else null
+        },
+    ) {
         val w = size.width
         val h = size.height
         val dp = density
@@ -93,23 +105,21 @@ fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Flo
             val col = lerp(if (k % 2 == 0) WATER_A_STONE else WATER_B_STONE, if (k % 2 == 0) WATER_A_LIVE else WATER_B_LIVE, v)
             drawCircle(Brush.radialGradient(listOf(col.copy(alpha = 0.26f + 0.14f * v), Color.Transparent), Offset(cx, cy), r), r, Offset(cx, cy))
         }
-        // Caustics: wavering bands of light that slowly flow down the screen.
-        val bands = 9
-        val bandGap = h / bands
-        val drift = (time * 14f * dp) % bandGap
-        for (b in -1 until bands + 1) {
-            val y0 = b * bandGap + drift
-            val path = Path()
-            var x = 0f
-            val stepX = 14f * dp
-            while (x <= w + stepX) {
-                val y = y0 +
-                    10f * dp * sin(x / (70f * dp) + time * 0.9f + b) +
-                    6f * dp * sin(x / (33f * dp) - time * 0.6f + b * 0.7f)
-                if (x == 0f) path.moveTo(x, y) else path.lineTo(x, y)
-                x += stepX
+        // Pre-Android-13 stand-in for the distortion field: a faint interference of slow wavefronts
+        // travelling in several directions, drawn as large soft patches.
+        if (waves > 0.01f && android.os.Build.VERSION.SDK_INT < 33) {
+            val cols = 6
+            val rows = 11
+            val cw = w / cols
+            val ch = h / rows
+            for (cx in 0..cols) for (cy in 0..rows) {
+                val x = cx * cw
+                val y = cy * ch
+                val f = fieldAt(x / h, y / h, time)
+                val a = (0.05f * waves * (f + 1f) / 2f).coerceIn(0f, 0.08f)
+                val r = maxOf(cw, ch) * 1.1f
+                drawCircle(Brush.radialGradient(listOf(nodeBlue.copy(alpha = a), Color.Transparent), Offset(x, y), r), r, Offset(x, y))
             }
-            drawPath(path, lerp(NODE_STONE, NODE_LIVE, v).copy(alpha = 0.03f + 0.07f * v), style = Stroke(width = (1.5f + 2.5f * v) * dp))
         }
 
         // Stars, everywhere, only when the lattice is awake.
@@ -192,4 +202,49 @@ fun LatticeBackground(energy: Float, ripple: Float, resonance: Float, vigor: Flo
 private fun DrawScope.drawNode(p: Offset, r: Float, color: Color, alpha: Float) {
     drawCircle(Brush.radialGradient(listOf(color.copy(alpha = alpha * 0.45f), Color.Transparent), p, r * 3.2f), r * 3.2f, p)
     drawCircle(color.copy(alpha = alpha), r * 0.55f, p)
+}
+
+/** Sum of four slow plane waves heading different ways; about -1..1. Positions in screen heights. */
+private fun fieldAt(x: Float, y: Float, t: Float): Float =
+    (sin(x * 3.1f + y * 1.0f + t * 0.33f) +
+        sin(-x * 1.6f + y * 2.9f - t * 0.27f) +
+        sin(-x * 2.4f - y * 2.1f + t * 0.21f) +
+        sin(x * 1.2f - y * 3.4f - t * 0.25f)) / 4f
+
+/**
+ * The 2-4am distortion field as an AGSL shader (Android 13+). It displaces the background along
+ * the same four slow wavefronts as [fieldAt], adds a faint shimmer, then blurs slightly.
+ */
+@androidx.annotation.RequiresApi(33)
+private class Distortion {
+    private val shader = android.graphics.RuntimeShader(
+        """
+        uniform shader content;
+        uniform float2 size;
+        uniform float time;
+        uniform float strength;
+        float w(float2 uv, float2 k, float speed) { return sin(dot(uv, k) + time * speed); }
+        half4 main(float2 p) {
+            float2 uv = p / size.y;
+            float a = w(uv, float2(3.1, 1.0), 0.33);
+            float b = w(uv, float2(-1.6, 2.9), -0.27);
+            float c = w(uv, float2(-2.4, -2.1), 0.21);
+            float d = w(uv, float2(1.2, -3.4), -0.25);
+            float2 shift = float2(a * 0.8 + c * 0.5 - d * 0.3, b * 0.8 - c * 0.4 + d * 0.5);
+            half4 col = content.eval(clamp(p + shift * strength, float2(0.0), size - 1.0));
+            float shimmer = (a + b + c + d) * 0.25;
+            col.rgb *= half(1.0 + shimmer * 0.07 * clamp(strength / 10.0, 0.0, 1.0));
+            return col;
+        }
+        """.trimIndent(),
+    )
+
+    fun effect(width: Float, height: Float, time: Float, strength: Float, blur: Float): androidx.compose.ui.graphics.RenderEffect {
+        shader.setFloatUniform("size", width, height)
+        shader.setFloatUniform("time", time)
+        shader.setFloatUniform("strength", strength)
+        val warp = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content")
+        val soft = android.graphics.RenderEffect.createBlurEffect(blur.coerceAtLeast(0.5f), blur.coerceAtLeast(0.5f), android.graphics.Shader.TileMode.CLAMP)
+        return android.graphics.RenderEffect.createChainEffect(soft, warp).asComposeRenderEffect()
+    }
 }

@@ -25,12 +25,15 @@ data class Candidate(
     val unfinished: Boolean = false,
     /** Weekdays the task can be worked on, see [Weekdays]. 0 = any day. */
     val days: Int = 0,
-    /** How much the user wants to do it, 0..[Recommender.MAX_INTEREST]. */
+    /** How much the user wants to do it: -5 (really don't) .. 0 (apathetic) .. 5 (really do). */
     val interest: Int = 0,
     /** Rough size, 1 (tiny) .. 5 (huge); 0 = not set. */
     val size: Int = 0,
     /** How hard it is, 1 (trivial) .. 5 (brutal); 0 = not set. */
     val difficulty: Int = 0,
+    /** Time of day it can be worked on, minutes from midnight; -1 = any time. May wrap past midnight. */
+    val windowStart: Int = -1,
+    val windowEnd: Int = -1,
 )
 
 /** Tunable numbers behind the ranking and the shuffle. Edited on the Tasks settings screen. */
@@ -49,7 +52,10 @@ data class Weights(
     val shuffleBase: Double = 1.0,
     /** Shuffle only: multiplier for tasks already in progress. */
     val inProgressBoost: Double = 2.0,
-    /** Shuffle and Easy: a task at full interest is drawn (1 + this) times as often. */
+    /**
+     * Random and Easy: interest +5 is drawn (1 + this) times as often, -5 (1 - this) times
+     * (never below 0.1), 0 unchanged.
+     */
     val interestBoost: Double = 0.5,
     /**
      * How strongly size scales the deadline part of the score. At 1, a tiny task's urgency is
@@ -79,7 +85,7 @@ data class Weights(
  */
 object Recommender {
     private const val HOUR = 60 * 60 * 1000L
-    const val MAX_INTEREST = 10
+    const val MAX_INTEREST = 5
 
     /** Per size level 1..5: how far the deadline urgency moves, scaled by [Weights.sizeEffect]. */
     private val SIZE_OFFSET = doubleArrayOf(0.0, -0.5, -0.25, 0.0, 0.5, 1.0)
@@ -90,13 +96,21 @@ object Recommender {
 
     /** Multiplier on draw weight for how interested the user is. */
     fun interestFactor(interest: Int, w: Weights = Weights()): Double =
-        1.0 + w.interestBoost * interest.coerceIn(0, MAX_INTEREST) / MAX_INTEREST
+        max(0.1, 1.0 + w.interestBoost * interest.coerceIn(-MAX_INTEREST, MAX_INTEREST) / MAX_INTEREST)
+
+    /** Whether [minute] (from midnight) falls in the window; windows may wrap past midnight. */
+    fun inWindow(minute: Int, start: Int, end: Int): Boolean = when {
+        start < 0 || end < 0 || start == end -> true
+        start < end -> minute in start until end
+        else -> minute >= start || minute < end
+    }
 
     /** Why a task can't be started right now, or null if it can. */
     fun blockReason(task: Candidate, openIds: Set<String>, now: Long, zone: ZoneId = ZoneId.systemDefault()): Block? = when {
         task.startAt != null && task.startAt > now -> Block.NOT_YET
         task.blockedBy.any { it in openIds } -> Block.PREREQUISITE
         !Weekdays.allows(task.days, Instant.ofEpochMilli(now).atZone(zone).dayOfWeek) -> Block.WRONG_DAY
+        !inWindow(Instant.ofEpochMilli(now).atZone(zone).let { it.hour * 60 + it.minute }, task.windowStart, task.windowEnd) -> Block.WRONG_TIME
         else -> null
     }
 
@@ -205,4 +219,13 @@ object Recommender {
     }
 }
 
-enum class Block { NOT_YET, PREREQUISITE, WRONG_DAY }
+/** "MON WED", "18:00–21:00", or both, for a task's Only-on restriction; null when unrestricted. */
+fun onlyOnLabel(days: Int, windowStart: Int, windowEnd: Int): String? {
+    val time = if (windowStart >= 0 && windowEnd >= 0 && windowStart != windowEnd) {
+        ReminderPlanner.formatMinute(windowStart) + "–" + ReminderPlanner.formatMinute(windowEnd)
+    } else null
+    val day = if (days != Weekdays.ANY) Weekdays.label(days) else null
+    return listOfNotNull(day, time).joinToString(" ").ifEmpty { null }
+}
+
+enum class Block { NOT_YET, PREREQUISITE, WRONG_DAY, WRONG_TIME }

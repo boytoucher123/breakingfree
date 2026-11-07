@@ -26,7 +26,7 @@ class TodoGraph private constructor(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val db = Room.databaseBuilder(app, TodoDatabase::class.java, "todo.db")
-        .addMigrations(TodoDatabase.MIGRATION_1_2)
+        .addMigrations(TodoDatabase.MIGRATION_1_2, TodoDatabase.MIGRATION_2_3)
         .build()
 
     val weights = WeightsStore(app)

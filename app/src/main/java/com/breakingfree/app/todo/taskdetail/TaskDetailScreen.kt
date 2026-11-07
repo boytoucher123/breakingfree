@@ -47,6 +47,7 @@ import com.breakingfree.app.todo.data.Priority
 import com.breakingfree.app.todo.data.TaskSize
 import com.breakingfree.app.todo.data.Task
 import com.breakingfree.app.todo.domain.Block
+import com.breakingfree.app.todo.domain.onlyOnLabel
 import com.breakingfree.app.todo.domain.DisplayStatus
 import com.breakingfree.app.todo.domain.ReminderMode
 import com.breakingfree.app.todo.domain.ReminderPlanner
@@ -109,24 +110,22 @@ fun TaskDetailScreen(
             val why = when (state.block) {
                 Block.NOT_YET -> "NOT AVAILABLE UNTIL " + formatWhen(task.startAt!!, now)
                 Block.PREREQUISITE -> "WAITING ON ANOTHER TASK"
-                Block.WRONG_DAY -> "ONLY ON " + Weekdays.label(task.days)
+                Block.WRONG_DAY, Block.WRONG_TIME -> "ONLY " + onlyOnLabel(task.days, task.windowStart, task.windowEnd)
                 null -> null
             }
             val facts = listOfNotNull(
                 why?.takeIf { !task.isCompleted },
-                if (state.status == DisplayStatus.UNFINISHED) "MISSING " + listOfNotNull(
-                    "PRIORITY".takeIf { task.priority == Priority.NONE },
-                    "TAGS".takeIf { task.tags.isEmpty() },
-                ).joinToString(" + ") + " // EDIT TO FINISH" else null,
+                if (state.status == DisplayStatus.UNFINISHED) "MISSING " + task.missingFields.joinToString(" + ") + " // EDIT TO FINISH" else null,
                 task.priority.takeIf { it != Priority.NONE && !task.isSystem }?.let { "${it.label} PRIORITY" },
                 listOfNotNull(
                     task.size.takeIf { it != TaskSize.UNSET }?.let { "SIZE ~${it.label}" },
                     task.difficulty.takeIf { it != Difficulty.UNSET }?.let { "${it.label} DIFFICULTY" },
-                    task.interest.takeIf { it > 0 }?.let { "INTEREST $it/10" },
+                    task.interest?.let { "INTEREST ${if (it > 0) "+$it" else "$it"}" },
                 ).joinToString("  //  ").ifEmpty { null },
                 task.dueAt?.let { formatDue(it, now) },
                 task.startAt?.takeIf { state.block != Block.NOT_YET }?.let { "AVAILABLE FROM " + formatWhen(it, now) },
-                task.days.takeIf { it != Weekdays.ANY && state.block != Block.WRONG_DAY }?.let { "ONLY ON " + Weekdays.label(it) },
+                onlyOnLabel(task.days, task.windowStart, task.windowEnd)
+                    ?.takeIf { state.block != Block.WRONG_DAY && state.block != Block.WRONG_TIME }?.let { "ONLY $it" },
                 reminderLine(task),
             )
             facts.forEach { MonoLabel(it, color = if (it == why || it.startsWith("MISSING")) p.accent else p.textDim) }

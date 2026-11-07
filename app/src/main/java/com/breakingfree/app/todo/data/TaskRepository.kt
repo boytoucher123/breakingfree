@@ -101,7 +101,7 @@ class TaskRepository(
                     UUID.randomUUID().toString(),
                     TaskDraft(
                         title = FINISH_TITLE,
-                        description = "Some tasks are missing a priority or tags, so they can't be suggested. " +
+                        description = "Some tasks are missing a priority, tags, size, difficulty or interest, so they can't be suggested. " +
                             "Open each one and fill in the missing details. This resolves itself once they're all done.",
                         priority = Priority.MEDIUM,
                     ),
@@ -138,9 +138,11 @@ class TaskRepository(
         systemKind = systemKind,
         createdAt = createdAt,
         completedAt = completedAt,
-        interest = d.interest.coerceIn(0, 10),
+        interestLevel = d.interest?.coerceIn(-5, 5),
         size = d.size.level,
         difficulty = d.difficulty.level,
+        windowStart = d.windowStart,
+        windowEnd = d.windowEnd,
     )
 
     private fun assemble(tasks: List<LocalTask>, tags: List<LocalTaskTag>, deps: List<LocalTaskDependency>): List<Task> {
@@ -161,9 +163,11 @@ class TaskRepository(
                 reminder = Reminder(ReminderMode.of(t.reminderMode), t.reminderStart, t.reminderEnd, t.reminderDays),
                 system = t.systemKind?.let { k -> SystemKind.entries.firstOrNull { it.name == k } },
                 createdAt = t.createdAt,
-                interest = t.interest,
+                interest = t.interestLevel,
                 size = TaskSize.of(t.size),
                 difficulty = Difficulty.of(t.difficulty),
+                windowStart = t.windowStart,
+                windowEnd = t.windowEnd,
             )
         }
     }

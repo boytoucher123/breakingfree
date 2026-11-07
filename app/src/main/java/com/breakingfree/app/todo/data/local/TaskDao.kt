@@ -77,7 +77,7 @@ interface TaskDao {
 
 @Database(
     entities = [LocalTask::class, LocalTaskTag::class, LocalTaskDependency::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class TodoDatabase : RoomDatabase() {
@@ -90,6 +90,19 @@ abstract class TodoDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE task ADD COLUMN interest INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE task ADD COLUMN size INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE task ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * Version 3: interest becomes -5..5 with "not set" distinct from 0 (apathetic), and tasks
+         * get a time-of-day window. Old interest 1..10 maps to -4..5; 0 (not set) stays not set.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE task ADD COLUMN interestLevel INTEGER")
+                db.execSQL("ALTER TABLE task ADD COLUMN windowStart INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("ALTER TABLE task ADD COLUMN windowEnd INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("UPDATE task SET interestLevel = interest - 5 WHERE interest > 0")
             }
         }
     }

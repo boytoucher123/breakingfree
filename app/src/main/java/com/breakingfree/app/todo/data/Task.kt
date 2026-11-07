@@ -58,7 +58,8 @@ enum class SystemKind {
  * @param startAt the task can't be started before this time (epoch millis), or null.
  * @param days [Weekdays] mask of days the task can be worked on; 0 = any day.
  * @param blockedBy ids of tasks that must be completed before this one can start.
- * @param interest how much the user wants to do it, 0..10.
+ * @param interest how much the user wants to do it, -5..5 (0 = apathetic); null = not set yet.
+ * @param windowStart time of day (minutes) from which it can be worked on, -1 = any; see [windowEnd].
  */
 data class Task(
     val id: String,
@@ -74,17 +75,22 @@ data class Task(
     val reminder: Reminder = Reminder(),
     val system: SystemKind? = null,
     val createdAt: Long = 0L,
-    val interest: Int = 0,
+    val interest: Int? = null,
     val size: TaskSize = TaskSize.UNSET,
     val difficulty: Difficulty = Difficulty.UNSET,
+    val windowStart: Int = -1,
+    val windowEnd: Int = -1,
 ) {
     val isCompleted get() = status == TaskStatus.DONE
     val isActive get() = !isCompleted
     val isInProgress get() = status == TaskStatus.IN_PROGRESS
     val isSystem get() = system != null
 
-    /** Missing details: no tags or no priority. Parked in the unfinished area until filled in. */
-    val isUnfinished get() = !isSystem && !isCompleted && (tags.isEmpty() || priority == Priority.NONE)
+    /** Missing details (see [missingFields]). Parked in the unfinished area until filled in. */
+    val isUnfinished get() = !isSystem && !isCompleted && missingFields.isNotEmpty()
+
+    /** Which required details are still missing, in display order. */
+    val missingFields: List<String> get() = missingFields(priority, tags, size, difficulty, interest)
 
     val titleForList: String
         get() = title.ifEmpty { description }
@@ -99,11 +105,23 @@ data class Task(
         inProgress = isInProgress,
         unfinished = isUnfinished,
         days = days,
-        interest = interest,
+        interest = interest ?: 0,
         size = size.level,
         difficulty = difficulty.level,
+        windowStart = windowStart,
+        windowEnd = windowEnd,
     )
 }
+
+/** Every task needs all of these before it can be suggested. */
+fun missingFields(priority: Priority, tags: List<String>, size: TaskSize, difficulty: Difficulty, interest: Int?): List<String> =
+    listOfNotNull(
+        "PRIORITY".takeIf { priority == Priority.NONE },
+        "TAGS".takeIf { tags.isEmpty() },
+        "SIZE".takeIf { size == TaskSize.UNSET },
+        "DIFFICULTY".takeIf { difficulty == Difficulty.UNSET },
+        "INTEREST".takeIf { interest == null },
+    )
 
 /** Everything the user can edit on a task. */
 data class TaskDraft(
@@ -116,9 +134,15 @@ data class TaskDraft(
     val tags: List<String> = emptyList(),
     val blockedBy: Set<String> = emptySet(),
     val reminder: Reminder = Reminder(),
-    val interest: Int = 0,
+    val interest: Int? = null,
     val size: TaskSize = TaskSize.UNSET,
     val difficulty: Difficulty = Difficulty.UNSET,
-)
+    val windowStart: Int = -1,
+    val windowEnd: Int = -1,
+) {
+    val missingFields: List<String> get() = missingFields(priority, tags, size, difficulty, interest)
+}
 
-fun Task.toDraft() = TaskDraft(title, description, priority, dueAt, startAt, days, tags, blockedBy, reminder, interest, size, difficulty)
+fun Task.toDraft() = TaskDraft(
+    title, description, priority, dueAt, startAt, days, tags, blockedBy, reminder, interest, size, difficulty, windowStart, windowEnd,
+)
