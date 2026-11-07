@@ -7,7 +7,10 @@ An Android app (Kotlin + Jetpack Compose) in red and black, with type that shift
 - **Countdown**: a spinning, worn goat-skull-and-pentagram coin above years, months, days, hours, minutes and seconds left until 1 January 2030.
 - **Chaos Phase**: recent news about war, military action, shootings, terror, riots, crime and political corruption, pulled from RSS feeds. Stories are grouped **Australia → the West → elsewhere**, and you can filter by region and category.
 - **Tasks** (centre tab): an offline task list with a home-screen widget that tells you what to do next. Details below.
-- **Roadmap**: a campaign map you scroll upward. Majors are epochs, milestones are measurable goals (income, a house, a car) and minor milestones are tasks. Every milestone and minor milestone lives inside a major. Nodes shade from red at the start to white at the **end goal**. Past the end goal comes the purple **Beyond**. The map opens where you currently are. To reset it, use ⋮ → Restore defaults.
+- **Roadmap**: a campaign map you scroll upward. Majors are epochs, milestones are measurable goals (income, a house, a car) and minor milestones are tasks. Every milestone and minor milestone lives inside a major. Nodes shade from the origin colour at the start to the end-goal colour at the **end goal**. Past the end goal comes the **Beyond**, which is its own page: scroll past the end goal and the map turns over to the Beyond (and back), so the two are never on screen together. The map opens where you currently are.
+  - **Several roadmaps**: swipe left and right between them. The first is called *General*. ⋮ → New roadmap / Rename / Delete this roadmap.
+  - **Colours**: ⋮ → Colours. Pick a preset (Blood, Ice, Venom, Gold, Ash) or set each of the six colours (origin, midway, end goal, beyond, deeper, abyss) yourself.
+  - ⋮ → Restore defaults or Clear this roadmap affect only the roadmap on screen.
 - **The Lattice**: one question at a time, laid over a living lattice that bends into spacetime near the top and reacts as you write. It follows the clock: brightest, bluest and most restless around 2am ("The veil is thin..."), dim and nearly still from noon to 5pm ("There's nothing here, at least for now."), with the line under the title changing through the day. You can add or delete questions (text-box or two-column table) with the gear icon. Defaults are in `app/src/main/assets/lattice_questions.json`.
 
 ## Tasks
@@ -15,7 +18,7 @@ An Android app (Kotlin + Jetpack Compose) in red and black, with type that shift
 - **Tasks** have:
   - a title and description
   - a priority
-  - an **interest** level, 0 to 10 (higher is drawn a little more often by Shuffle and Easy)
+  - an **interest** level, 0 to 10 (higher is drawn a little more often by Random and Easy)
   - a **size**, tiny to huge (bigger makes its deadline count for more; no deadline, no effect)
   - a **difficulty**, trivial to brutal (used by Easy)
   - tags (spaces and hyphens become `_`)
@@ -30,8 +33,8 @@ An Android app (Kotlin + Jetpack Compose) in red and black, with type that shift
   - While anything is unfinished, a system task "Finish N unfinished tasks" appears. Its page lists them so you can fill them in.
   - The system task resolves itself once the area is empty.
 - **Next task widget**: long-press the home screen → Widgets → BREAKING FREE → *Next task*.
-  - **Next most important** steps through tasks in order of importance.
-  - **Shuffle** picks a weighted random task. Higher priority, sooner deadlines, in-progress and more interesting tasks come up more often.
+  - **Important** shows the most important task; press it again for the next most important, and so on.
+  - **Random** picks a weighted random task. Higher priority, sooner deadlines, in-progress and more interesting tasks come up more often.
   - **Easy** picks a small task (tiny or small by default), with smaller and easier ones likelier. Tasks with no size set are never picked.
   - Tap the task to open it. Mark it done from the app.
   - Tasks that can't be started, and unfinished tasks, are never shown.

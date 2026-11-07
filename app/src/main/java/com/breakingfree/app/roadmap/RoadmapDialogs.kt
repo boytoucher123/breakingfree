@@ -6,6 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +22,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,6 +79,7 @@ fun ActionButton(text: String, modifier: Modifier = Modifier, danger: Boolean = 
 @Composable
 fun NodeDialog(
     map: Roadmap,
+    scheme: RoadScheme,
     node: RoadNode,
     onDismiss: () -> Unit,
     onToggle: () -> Unit,
@@ -87,7 +96,7 @@ fun NodeDialog(
     val si = siblings.indexOfFirst { it.id == node.id }
     val path = map.path()
     val idx = path.indexOfFirst { it.node.id == node.id }
-    val color = colorAt(idx, path.size, map.endGoalIndex(path), node.tier)
+    val color = scheme.colorAt(idx, path.size, map.endGoalIndex(path), node.tier)
 
     Panel(onDismiss) {
         MonoLabel(
@@ -278,4 +287,115 @@ fun ConfirmDialog(title: String, message: String, confirm: String, onConfirm: ()
             ActionButton(confirm, Modifier.weight(1f), danger = true, onClick = onConfirm)
         }
     }
+}
+
+@Composable
+fun NameRoadmapDialog(isNew: Boolean, initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    val p = LocalPalette.current
+    var name by remember { mutableStateOf(initial) }
+    Panel(onDismiss) {
+        Text(
+            if (isNew) "New Roadmap" else "Rename Roadmap",
+            style = TextStyle(fontFamily = Fonts.Gothic, fontSize = 28.sp), color = p.text,
+        )
+        Spacer(Modifier.height(14.dp))
+        OutlinedTextField(
+            value = name, onValueChange = { name = it }, singleLine = true,
+            label = { Text("Name") }, modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = p.accent, unfocusedBorderColor = p.line,
+                focusedTextColor = p.text, unfocusedTextColor = p.text, cursorColor = p.accent,
+                focusedLabelColor = p.accent, unfocusedLabelColor = p.textDim,
+            ),
+        )
+        if (isNew) {
+            Spacer(Modifier.height(8.dp))
+            MonoLabel("STARTS EMPTY, IN THIS ROADMAP'S COLOURS. SWIPE LEFT AND RIGHT TO MOVE BETWEEN THEM.", fontSize = 10.sp)
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton("CANCEL", Modifier.weight(1f), onClick = onDismiss)
+            ActionButton(if (isNew) "CREATE" else "SAVE", Modifier.weight(1f), danger = true,
+                enabled = name.isNotBlank(), onClick = { onSave(name) })
+        }
+    }
+}
+
+/** Pick a preset or set each of the six colours by hue, saturation and brightness. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SchemeDialog(initial: RoadScheme, onDismiss: () -> Unit, onSave: (RoadScheme) -> Unit) {
+    val p = LocalPalette.current
+    var scheme by remember { mutableStateOf(initial) }
+    var slot by remember { mutableStateOf<Int?>(null) }
+    Panel(onDismiss) {
+        Text("Colours", style = TextStyle(fontFamily = Fonts.Gothic, fontSize = 28.sp), color = p.text)
+        Spacer(Modifier.height(12.dp))
+        MonoLabel("PRESETS")
+        Spacer(Modifier.height(6.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            RoadScheme.PRESETS.forEach { preset ->
+                TagChip(preset.name, selected = scheme == preset, onClick = { scheme = preset; slot = null })
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        // Preview: the climb, then the Beyond.
+        Row(Modifier.fillMaxWidth().height(18.dp)) {
+            Box(Modifier.weight(2f).fillMaxHeight().background(
+                Brush.horizontalGradient(listOf(Color(scheme.origin), Color(scheme.midway), Color(scheme.goal))),
+            ))
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.weight(1f).fillMaxHeight().background(
+                Brush.horizontalGradient(listOf(Color(scheme.beyondStart), Color(scheme.beyondMid), Color(scheme.abyss))),
+            ))
+        }
+        Spacer(Modifier.height(14.dp))
+        MonoLabel(if (scheme.name == RoadScheme.CUSTOM) "CUSTOM // TAP A COLOUR TO CHANGE IT" else "TAP A COLOUR TO CHANGE IT")
+        Spacer(Modifier.height(8.dp))
+        scheme.slots.chunked(3).forEachIndexed { row, pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEachIndexed { col, (label, argb) ->
+                    val index = row * 3 + col
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .border(1.dp, if (slot == index) p.accent else p.line)
+                            .clickable { slot = if (slot == index) null else index }
+                            .padding(6.dp),
+                    ) {
+                        Box(Modifier.fillMaxWidth().height(22.dp).background(Color(argb)))
+                        Spacer(Modifier.height(4.dp))
+                        MonoLabel(label, fontSize = 9.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        slot?.let { index ->
+            HsvEditor(scheme.slots[index].second) { scheme = scheme.withSlot(index, it) }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton("CANCEL", Modifier.weight(1f), onClick = onDismiss)
+            ActionButton("SAVE", Modifier.weight(1f), danger = true, onClick = { onSave(scheme) })
+        }
+    }
+}
+
+@Composable
+private fun HsvEditor(argb: Int, onChange: (Int) -> Unit) {
+    val p = LocalPalette.current
+    val hsv = remember(argb) { FloatArray(3).also { android.graphics.Color.colorToHSV(argb, it) } }
+    fun emit(h: Float = hsv[0], s: Float = hsv[1], v: Float = hsv[2]) =
+        onChange(android.graphics.Color.HSVToColor(floatArrayOf(h, s, v)))
+    val colors = SliderDefaults.colors(thumbColor = p.accent, activeTrackColor = p.accent, inactiveTrackColor = p.line)
+    MonoLabel("HUE")
+    Box(Modifier.fillMaxWidth().height(6.dp).background(
+        Brush.horizontalGradient((0..6).map { Color.hsv(it * 60f % 360f, 1f, 1f) }),
+    ))
+    Slider(value = hsv[0], onValueChange = { emit(h = it) }, valueRange = 0f..359f, colors = colors)
+    MonoLabel("SATURATION")
+    Slider(value = hsv[1], onValueChange = { emit(s = it) }, valueRange = 0f..1f, colors = colors)
+    MonoLabel("BRIGHTNESS")
+    Slider(value = hsv[2], onValueChange = { emit(v = it) }, valueRange = 0f..1f, colors = colors)
 }

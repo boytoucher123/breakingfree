@@ -101,27 +101,64 @@ data class Roadmap(val nodes: List<RoadNode> = emptyList()) {
     }
 }
 
+/** One named roadmap with its own colours. Swiped between on the Roadmap tab. */
+data class RoadmapBook(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val scheme: RoadScheme = RoadScheme.BLOOD,
+    val map: Roadmap = Roadmap(),
+)
+
+/**
+ * All the roadmaps, kept in roadmaps.json. The first run after the update reads the old single
+ * roadmap.json into a roadmap called "General" (the old file is left in place).
+ */
 class RoadmapViewModel(app: Application) : AndroidViewModel(app) {
-    private val file = File(app.filesDir, "roadmap.json")
-    private val _map = MutableStateFlow(load())
-    val map: StateFlow<Roadmap> = _map
+    private val dir = app.filesDir
+    private val file = File(dir, "roadmaps.json")
+    private val legacyFile = File(dir, "roadmap.json")
+    private val _books = MutableStateFlow(load())
+    val books: StateFlow<List<RoadmapBook>> = _books
 
-    private fun commit(nodes: List<RoadNode>) {
-        val fixed = normalize(nodes)
-        _map.value = Roadmap(fixed)
-        save(fixed)
+    private fun commitBooks(books: List<RoadmapBook>) {
+        _books.value = books
+        save(books)
     }
 
-    fun add(title: String, notes: String, tier: Tier, parentId: String?, endGoal: Boolean = false) {
-        var nodes = _map.value.nodes
+    private fun editBook(bookId: String, f: (RoadmapBook) -> RoadmapBook) =
+        commitBooks(_books.value.map { if (it.id == bookId) f(it) else it })
+
+    private fun editNodes(bookId: String, f: (Roadmap) -> List<RoadNode>) =
+        editBook(bookId) { it.copy(map = Roadmap(normalize(f(it.map)))) }
+
+    // ---- roadmaps ----
+
+    /** @return the new roadmap's position. */
+    fun addBook(name: String, scheme: RoadScheme): Int {
+        commitBooks(_books.value + RoadmapBook(name = name.trim().ifEmpty { "Untitled" }, scheme = scheme))
+        return _books.value.size - 1
+    }
+
+    fun renameBook(bookId: String, name: String) = editBook(bookId) { it.copy(name = name.trim().ifEmpty { it.name }) }
+
+    fun setScheme(bookId: String, scheme: RoadScheme) = editBook(bookId) { it.copy(scheme = scheme) }
+
+    /** The last roadmap can't be deleted. */
+    fun deleteBook(bookId: String) {
+        if (_books.value.size > 1) commitBooks(_books.value.filter { it.id != bookId })
+    }
+
+    // ---- milestones in one roadmap ----
+
+    fun add(bookId: String, title: String, notes: String, tier: Tier, parentId: String?, endGoal: Boolean = false) = editNodes(bookId) { m ->
+        var nodes = m.nodes
         if (endGoal) nodes = nodes.map { it.copy(endGoal = false) }
-        commit(nodes + RoadNode(title = title.trim(), notes = notes.trim(), tier = tier,
-            parentId = if (tier == Tier.MAJOR) null else parentId, endGoal = endGoal && tier == Tier.MAJOR))
+        nodes + RoadNode(title = title.trim(), notes = notes.trim(), tier = tier,
+            parentId = if (tier == Tier.MAJOR) null else parentId, endGoal = endGoal && tier == Tier.MAJOR)
     }
 
-    fun update(node: RoadNode) {
-        val m = _map.value
-        val old = m.get(node.id) ?: return
+    fun update(bookId: String, node: RoadNode) = editNodes(bookId) { m ->
+        val old = m.get(node.id) ?: return@editNodes m.nodes
         val updated = if (node.tier == Tier.MAJOR) node.copy(parentId = null) else node.copy(endGoal = false)
         var nodes = m.nodes.map {
             when {
@@ -141,75 +178,121 @@ class RoadmapViewModel(app: Application) : AndroidViewModel(app) {
             // Re-parented: move to the end of its new sibling group.
             nodes = nodes.filter { it.id != node.id } + updated
         }
-        commit(nodes)
+        nodes
     }
 
-    fun toggleDone(id: String) {
-        commit(_map.value.nodes.map { if (it.id == id) it.copy(done = !it.done) else it })
+    fun toggleDone(bookId: String, id: String) = editNodes(bookId) { m ->
+        m.nodes.map { if (it.id == id) it.copy(done = !it.done) else it }
     }
 
     /** Deleting a major takes everything inside it. Deleting a milestone hands its steps to the parent. */
-    fun delete(id: String) {
-        val m = _map.value
-        val victim = m.get(id) ?: return
+    fun delete(bookId: String, id: String) = editNodes(bookId) { m ->
+        val victim = m.get(id) ?: return@editNodes m.nodes
         if (victim.tier == Tier.MAJOR) {
             val gone = m.descendants(id) + id
-            commit(m.nodes.filter { it.id !in gone })
+            m.nodes.filter { it.id !in gone }
         } else {
             val newParent = m.effectiveParent(victim)?.id
-            commit(m.nodes.filter { it.id != id }.map { if (it.parentId == id) it.copy(parentId = newParent) else it })
+            m.nodes.filter { it.id != id }.map { if (it.parentId == id) it.copy(parentId = newParent) else it }
         }
     }
 
     /** direction +1 = later (further up the map), -1 = earlier. Swaps with the adjacent sibling. */
-    fun move(id: String, direction: Int) {
-        val m = _map.value
-        val node = m.get(id) ?: return
+    fun move(bookId: String, id: String, direction: Int) = editNodes(bookId) { m ->
+        val node = m.get(id) ?: return@editNodes m.nodes
         val siblings = m.children(m.effectiveParent(node)?.id)
         val si = siblings.indexOfFirst { it.id == id }
-        val other = siblings.getOrNull(si + direction) ?: return
+        val other = siblings.getOrNull(si + direction) ?: return@editNodes m.nodes
         val list = m.nodes.toMutableList()
         val a = list.indexOfFirst { it.id == id }
         val b = list.indexOfFirst { it.id == other.id }
         list[a] = other; list[b] = node
-        commit(list)
+        list
     }
 
-    fun clear() = commit(emptyList())
+    fun clear(bookId: String) = editNodes(bookId) { emptyList() }
 
-    fun restoreDefaults() = commit(defaultRoadmap())
+    fun restoreDefaults(bookId: String) = editNodes(bookId) { defaultRoadmap() }
 
-    private fun load(): Roadmap {
-        if (!file.exists()) return Roadmap(defaultRoadmap()).also { save(it.nodes) }
-        return runCatching {
-            val arr = JSONArray(file.readText())
-            Roadmap(normalize((0 until arr.length()).map { i ->
-                val o = arr.getJSONObject(i)
-                RoadNode(
-                    id = o.getString("id"),
-                    title = o.getString("title"),
-                    notes = o.optString("notes"),
-                    tier = runCatching { Tier.valueOf(o.getString("tier")) }.getOrDefault(Tier.REGULAR),
-                    parentId = if (o.isNull("parent")) null else o.optString("parent").ifBlank { null },
-                    done = o.optBoolean("done"),
-                    endGoal = o.optBoolean("endGoal"),
-                )
-            }))
-        }.getOrElse { Roadmap() }
+    // ---- storage ----
+
+    private fun load(): List<RoadmapBook> {
+        if (file.exists()) {
+            runCatching {
+                val arr = JSONObject(file.readText()).getJSONArray("roadmaps")
+                val books = (0 until arr.length()).map { i ->
+                    val o = arr.getJSONObject(i)
+                    RoadmapBook(
+                        id = o.getString("id"),
+                        name = o.getString("name"),
+                        scheme = o.optJSONObject("scheme")?.let(::readScheme) ?: RoadScheme.BLOOD,
+                        map = Roadmap(normalize(readNodes(o.getJSONArray("nodes")))),
+                    )
+                }
+                if (books.isNotEmpty()) return books
+            }
+        }
+        val nodes = if (legacyFile.exists()) {
+            runCatching { normalize(readNodes(JSONArray(legacyFile.readText()))) }.getOrElse { emptyList() }
+        } else {
+            defaultRoadmap()
+        }
+        return listOf(RoadmapBook(name = "General", map = Roadmap(nodes))).also(::save)
     }
 
-    private fun save(nodes: List<RoadNode>) {
-        val arr = JSONArray()
+    private fun readNodes(arr: JSONArray): List<RoadNode> = (0 until arr.length()).map { i ->
+        val o = arr.getJSONObject(i)
+        RoadNode(
+            id = o.getString("id"),
+            title = o.getString("title"),
+            notes = o.optString("notes"),
+            tier = runCatching { Tier.valueOf(o.getString("tier")) }.getOrDefault(Tier.REGULAR),
+            parentId = if (o.isNull("parent")) null else o.optString("parent").ifBlank { null },
+            done = o.optBoolean("done"),
+            endGoal = o.optBoolean("endGoal"),
+        )
+    }
+
+    private fun writeNodes(nodes: List<RoadNode>) = JSONArray().apply {
         nodes.forEach { n ->
-            arr.put(JSONObject().apply {
+            put(JSONObject().apply {
                 put("id", n.id); put("title", n.title); put("notes", n.notes); put("tier", n.tier.name)
                 put("parent", n.parentId ?: JSONObject.NULL); put("done", n.done)
                 put("endGoal", n.endGoal)
             })
         }
+    }
+
+    private fun readScheme(o: JSONObject): RoadScheme {
+        val d = RoadScheme.BLOOD
+        return RoadScheme(
+            name = o.optString("name", d.name),
+            origin = o.optInt("origin", d.origin),
+            midway = o.optInt("midway", d.midway),
+            goal = o.optInt("goal", d.goal),
+            beyondStart = o.optInt("beyondStart", d.beyondStart),
+            beyondMid = o.optInt("beyondMid", d.beyondMid),
+            abyss = o.optInt("abyss", d.abyss),
+        )
+    }
+
+    private fun writeScheme(s: RoadScheme) = JSONObject().apply {
+        put("name", s.name); put("origin", s.origin); put("midway", s.midway); put("goal", s.goal)
+        put("beyondStart", s.beyondStart); put("beyondMid", s.beyondMid); put("abyss", s.abyss)
+    }
+
+    private fun save(books: List<RoadmapBook>) {
+        val arr = JSONArray()
+        books.forEach { b ->
+            arr.put(JSONObject().apply {
+                put("id", b.id); put("name", b.name)
+                put("scheme", writeScheme(b.scheme))
+                put("nodes", writeNodes(b.map.nodes))
+            })
+        }
         runCatching {
-            val tmp = File(file.parentFile, "roadmap.json.tmp")
-            tmp.writeText(arr.toString())
+            val tmp = File(dir, "roadmaps.json.tmp")
+            tmp.writeText(JSONObject().put("roadmaps", arr).toString())
             tmp.renameTo(file)
         }
     }

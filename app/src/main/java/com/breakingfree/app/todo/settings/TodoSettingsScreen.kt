@@ -79,7 +79,7 @@ fun TodoSettingsScreen(onBack: () -> Unit, viewModel: TodoSettingsViewModel = vi
             )
 
             Spacer(Modifier.height(18.dp))
-            SectionHeader("SHUFFLE")
+            SectionHeader("RANDOM")
             MonoLabel("ONLY AFFECTS THE RANDOM PICK", Modifier.padding(top = 4.dp, bottom = 6.dp), fontSize = 10.sp)
             WeightSlider(viewModel::weightsSettled, "BASE CHANCE", w.shuffleBase, 0f..10f) { viewModel.setWeights(w.copy(shuffleBase = it)) }
             WeightSlider(viewModel::weightsSettled, "IN PROGRESS BOOST (×)", w.inProgressBoost, 1f..10f) { viewModel.setWeights(w.copy(inProgressBoost = it)) }

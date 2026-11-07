@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -193,7 +191,7 @@ private fun NextUpCard(
         val header = when {
             card.selection.mode == NextMode.EASY && card.total > 0 -> "NEXT // EASY"
             task == null -> "NEXT //"
-            card.selection.mode == NextMode.SHUFFLE -> "NEXT // SHUFFLED"
+            card.selection.mode == NextMode.SHUFFLE -> "NEXT // RANDOM"
             else -> "NEXT // #${card.rank + 1} OF ${card.total}"
         }
         MonoLabel(header, Modifier.padding(bottom = 8.dp), color = p.accent, fontSize = 11.sp)
@@ -226,11 +224,11 @@ private fun NextUpCard(
             }
         }
         Spacer(Modifier.height(12.dp))
-        // Same height for all three, even when the first label wraps.
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ActionButton(card.selection.importantButtonLabel, Modifier.weight(1.3f).fillMaxHeight(), onClick = onImportant)
-            ActionButton("SHUFFLE", Modifier.weight(1.1f).fillMaxHeight(), onClick = onShuffle)
-            ActionButton("EASY", Modifier.weight(0.8f).fillMaxHeight(), onClick = onEasy)
+        // Equal thirds.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton("IMPORTANT", Modifier.weight(1f), onClick = onImportant)
+            ActionButton("RANDOM", Modifier.weight(1f), onClick = onShuffle)
+            ActionButton("EASY", Modifier.weight(1f), onClick = onEasy)
         }
     }
 }
