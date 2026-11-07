@@ -20,7 +20,6 @@ class NextTaskTest {
     fun defaultShowsMostImportantWithNextLabel() {
         val sel = NextSelection()
         assertEquals("a", NextTask.resolve(tasks, sel, now).task!!.id)
-        assertEquals("NEXT MOST IMPORTANT", sel.importantButtonLabel)
     }
 
     @Test
@@ -38,11 +37,9 @@ class NextTaskTest {
     fun shuffleRestoresMostImportantButton() {
         val shuffled = NextTask.pressShuffle(tasks, NextSelection(), now, Random(1))
         assertEquals(NextMode.SHUFFLE, shuffled.mode)
-        assertEquals("MOST IMPORTANT", shuffled.importantButtonLabel)
         // Pressing "Most important" after a shuffle goes back to the top task.
         val back = NextTask.pressImportant(tasks, shuffled, now)
         assertEquals("a", NextTask.resolve(tasks, back, now).task!!.id)
-        assertEquals("NEXT MOST IMPORTANT", back.importantButtonLabel)
     }
 
     @Test

@@ -161,7 +161,7 @@ fun AddEditTaskScreen(
 
             Spacer(Modifier.height(22.dp))
             SectionHeader("INTEREST")
-            MonoLabel("HOW MUCH YOU WANT TO DO IT // NUDGES SHUFFLE AND EASY", Modifier.padding(top = 4.dp), fontSize = 10.sp)
+            MonoLabel("HOW MUCH YOU WANT TO DO IT // NUDGES RANDOM AND EASY", Modifier.padding(top = 4.dp), fontSize = 10.sp)
             InterestSlider(d.interest, viewModel::updateInterest)
 
             Spacer(Modifier.height(16.dp))

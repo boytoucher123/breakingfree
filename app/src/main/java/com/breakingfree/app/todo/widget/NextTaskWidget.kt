@@ -113,7 +113,7 @@ class NextTaskWidget : GlanceAppWidget() {
             val header = when {
                 selection.mode == NextMode.EASY && resolved.total > 0 -> "NEXT // EASY"
                 task == null -> "NEXT //"
-                selection.mode == NextMode.SHUFFLE -> "NEXT // SHUFFLED"
+                selection.mode == NextMode.SHUFFLE -> "NEXT // RANDOM"
                 else -> "NEXT // #${resolved.rank + 1} OF ${resolved.total}"
             }
             Text(header, style = label(AccentColor, 10))
@@ -148,11 +148,12 @@ class NextTaskWidget : GlanceAppWidget() {
             // Shown whenever there is anything startable, so Easy finding nothing small isn't a dead end.
             if (resolved.total > 0) {
                 Row(GlanceModifier.fillMaxWidth()) {
-                    WidgetButton(selection.importantButtonLabel, actionRunCallback<MostImportantAction>(), GlanceModifier.defaultWeight())
+                    // Equal thirds.
+                    WidgetButton("IMPORTANT", actionRunCallback<MostImportantAction>(), GlanceModifier.defaultWeight())
                     Spacer(GlanceModifier.width(5.dp))
-                    WidgetButton("SHUFFLE", actionRunCallback<ShuffleAction>())
+                    WidgetButton("RANDOM", actionRunCallback<ShuffleAction>(), GlanceModifier.defaultWeight())
                     Spacer(GlanceModifier.width(5.dp))
-                    WidgetButton("EASY", actionRunCallback<EasyAction>())
+                    WidgetButton("EASY", actionRunCallback<EasyAction>(), GlanceModifier.defaultWeight())
                 }
             }
         }
@@ -160,16 +161,15 @@ class NextTaskWidget : GlanceAppWidget() {
 
     @Composable
     private fun WidgetButton(text: String, onClick: Action, modifier: GlanceModifier = GlanceModifier) {
-        // Fixed height so the buttons line up when "NEXT MOST IMPORTANT" wraps onto two lines.
         Box(
             modifier
-                .height(40.dp)
+                .height(36.dp)
                 .background(ImageProvider(R.drawable.widget_cell))
                 .clickable(onClick)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text, style = label(TextColor, 10).copy(textAlign = TextAlign.Center), maxLines = 2)
+            Text(text, style = label(TextColor, 11).copy(textAlign = TextAlign.Center), maxLines = 1)
         }
     }
 

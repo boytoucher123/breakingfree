@@ -74,7 +74,6 @@ class EffortRulesTest {
         val tasks = listOf(c("a", size = 1), c("b", size = 2), c("big", size = 5))
         var sel = NextTask.pressEasy(tasks, NextSelection(), now, Random(1))
         assertEquals(NextMode.EASY, sel.mode)
-        assertEquals("MOST IMPORTANT", sel.importantButtonLabel)
         val first = NextTask.resolve(tasks, sel, now).task!!.id
         sel = NextTask.pressEasy(tasks, sel, now, Random(2))
         val second = NextTask.resolve(tasks, sel, now).task!!.id
