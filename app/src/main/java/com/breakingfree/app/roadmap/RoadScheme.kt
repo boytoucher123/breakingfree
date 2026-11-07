@@ -2,6 +2,8 @@ package com.breakingfree.app.roadmap
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import com.breakingfree.app.ui.Palette
+import com.breakingfree.app.ui.RedPalette
 import kotlin.math.pow
 
 /**
@@ -44,6 +46,26 @@ data class RoadScheme(
     val beyondHaze: Color get() = lerp(c(beyondMid), Color.Black, 0.7f)
     val beyondTitle: Color get() = lerp(c(beyondStart), c(beyondMid), 0.5f)
     val beyondSubtitle: Color get() = lerp(c(beyondMid), c(abyss), 0.3f)
+
+    /**
+     * The app's palette while this roadmap is on screen: accents (the + button, page squares,
+     * the line above the tab bar) in the scheme's own colour. Blood keeps the app's red exactly.
+     */
+    fun palette(): Palette {
+        if (this == BLOOD) return RedPalette
+        val accent = c(midway)
+        val dark = lerp(c(origin), Color.Black, 0.6f)
+        return Palette(
+            background = lerp(c(origin), Color.Black, 0.95f),
+            surface = lerp(c(origin), Color.Black, 0.9f),
+            surfaceHigh = lerp(c(origin), Color.Black, 0.85f),
+            accent = accent,
+            accentDim = lerp(accent, Color.Black, 0.5f),
+            text = lerp(c(goal), Color(0xFFEDE3DC), 0.5f),
+            textDim = lerp(lerp(c(midway), Color.Gray, 0.6f), Color.Black, 0.2f),
+            line = lerp(dark, Color.Black, 0.5f),
+        )
+    }
 
     /** The six editable colours, in order, with their labels. */
     val slots: List<Pair<String, Int>>

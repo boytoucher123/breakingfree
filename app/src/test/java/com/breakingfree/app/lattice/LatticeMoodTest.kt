@@ -9,9 +9,13 @@ class LatticeMoodTest {
     private fun at(h: Int, m: Int = 0) = LatticeMoods.at(LocalTime.of(h, m))
 
     @Test
-    fun peaksAtTwoAndIsWeakestInTheAfternoon() {
+    fun peaksTwoToFourAndIsDeadNineToSeven() {
         assertEquals(1f, at(2).vigor, 1e-6f)
-        for (h in 12..17) assertTrue("$h", at(h).vigor <= 0.051f)
+        assertEquals(1f, at(3).vigor, 1e-6f)
+        assertEquals(1f, at(4).vigor, 1e-6f)
+        for (h in 9..18) assertEquals("$h", 0f, at(h).vigor, 1e-6f)
+        assertEquals(0f, at(19).vigor, 1e-6f)
+        assertTrue(at(21).vigor > 0.2f)
         (0..23).forEach { h -> assertTrue(at(h).vigor in 0f..1f) }
     }
 
@@ -29,10 +33,11 @@ class LatticeMoodTest {
     @Test
     fun linesFollowTheClock() {
         assertEquals("The veil is thin...", at(2).line)
-        assertEquals("There's nothing here, at least for now.", at(12).line)
-        assertEquals("There's nothing here, at least for now.", at(16, 59).line)
+        assertEquals("The veil is thin...", at(3, 59).line)
+        assertEquals("There's nothing here, at least for now.", at(9).line)
+        assertEquals("There's nothing here, at least for now.", at(18, 59).line)
         assertEquals("The noise is receding...", at(22).line)
         assertEquals("The noise is receding...", at(0, 30).line)
-        assertEquals("The veil is thin...", at(1).line)
+        assertEquals("The veil is thinning...", at(1).line)
     }
 }

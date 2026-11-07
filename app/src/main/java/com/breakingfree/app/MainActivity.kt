@@ -45,6 +45,12 @@ import com.breakingfree.app.chaos.ChaosScreen
 import com.breakingfree.app.countdown.CountdownScreen
 import com.breakingfree.app.lattice.LatticeScreen
 import com.breakingfree.app.roadmap.RoadmapScreen
+import com.breakingfree.app.roadmap.RoadmapViewModel
+import com.breakingfree.app.lattice.rememberLatticeMood
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.breakingfree.app.ui.RedPalette
+import com.breakingfree.app.ui.latticePalette
 import com.breakingfree.app.todo.TodoNav
 import com.breakingfree.app.todo.TodoRoute
 import com.breakingfree.app.todo.TodoTab
@@ -107,7 +113,17 @@ fun BreakingFreeApp(openTask: String? = null, onOpenTaskHandled: () -> Unit = {}
             onOpenTaskHandled()
         }
     }
-    BreakingFreeTheme(quiet = tab == Tab.LATTICE) {
+    // Roadmap: the colours of the roadmap on screen. Lattice: stone by day, blue at night.
+    val roadmaps: RoadmapViewModel = viewModel()
+    val books by roadmaps.books.collectAsState()
+    val roadPage by roadmaps.page.collectAsState()
+    val mood = rememberLatticeMood()
+    val palette = when (tab) {
+        Tab.ROADMAP -> (books.getOrNull(roadPage) ?: books.first()).scheme.palette()
+        Tab.LATTICE -> latticePalette(mood.vigor)
+        else -> RedPalette
+    }
+    BreakingFreeTheme(palette) {
         val p = LocalPalette.current
         Column(
             Modifier

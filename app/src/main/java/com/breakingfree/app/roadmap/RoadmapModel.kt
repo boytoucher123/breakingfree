@@ -120,6 +120,11 @@ class RoadmapViewModel(app: Application) : AndroidViewModel(app) {
     private val _books = MutableStateFlow(load())
     val books: StateFlow<List<RoadmapBook>> = _books
 
+    /** The roadmap on screen. Kept here so the tab reopens on it and the app can use its colours. */
+    private val _page = MutableStateFlow(0)
+    val page: StateFlow<Int> = _page
+    fun setPage(i: Int) { _page.value = i }
+
     private fun commitBooks(books: List<RoadmapBook>) {
         _books.value = books
         save(books)
