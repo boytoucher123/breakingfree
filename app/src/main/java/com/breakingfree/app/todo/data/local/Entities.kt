@@ -1,5 +1,6 @@
 package com.breakingfree.app.todo.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -26,6 +27,12 @@ data class LocalTask(
     val systemKind: String?,
     val createdAt: Long,
     val completedAt: Long?,
+    /** 0..10. Added in database version 2. */
+    @ColumnInfo(defaultValue = "0") val interest: Int = 0,
+    /** [com.breakingfree.app.todo.data.TaskSize] level. Added in version 2. */
+    @ColumnInfo(defaultValue = "0") val size: Int = 0,
+    /** [com.breakingfree.app.todo.data.Difficulty] level. Added in version 2. */
+    @ColumnInfo(defaultValue = "0") val difficulty: Int = 0,
 )
 
 /** One tag on one task. */

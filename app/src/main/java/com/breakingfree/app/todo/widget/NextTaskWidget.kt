@@ -44,6 +44,7 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontFamily
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.breakingfree.app.MainActivity
@@ -65,7 +66,7 @@ private val RankKey = intPreferencesKey("rank")
 private val ShuffledKey = stringPreferencesKey("shuffled")
 
 private fun Preferences.selection() = NextSelection(
-    mode = if (this[ModeKey] == NextMode.SHUFFLE.name) NextMode.SHUFFLE else NextMode.MOST_IMPORTANT,
+    mode = NextMode.of(this[ModeKey]),
     rank = this[RankKey] ?: 0,
     shuffledId = this[ShuffledKey],
 )
@@ -109,18 +110,13 @@ class NextTaskWidget : GlanceAppWidget() {
                 .background(ImageProvider(R.drawable.widget_bg))
                 .padding(12.dp),
         ) {
-            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                val header = when {
-                    task == null -> "NEXT //"
-                    selection.mode == NextMode.SHUFFLE -> "NEXT // SHUFFLED"
-                    else -> "NEXT // #${resolved.rank + 1} OF ${resolved.total}"
-                }
-                Text(header, style = label(AccentColor, 10), modifier = GlanceModifier.defaultWeight())
-                // The system task resolves itself; it has no Done.
-                if (task != null && !task.isSystem) {
-                    WidgetButton("✓ DONE", actionRunCallback<DoneAction>(actionParametersOf(TaskIdParam to task.id)))
-                }
+            val header = when {
+                selection.mode == NextMode.EASY && resolved.total > 0 -> "NEXT // EASY"
+                task == null -> "NEXT //"
+                selection.mode == NextMode.SHUFFLE -> "NEXT // SHUFFLED"
+                else -> "NEXT // #${resolved.rank + 1} OF ${resolved.total}"
             }
+            Text(header, style = label(AccentColor, 10))
             Spacer(GlanceModifier.height(6.dp))
             Box(
                 GlanceModifier.fillMaxWidth().defaultWeight().clickable(
@@ -129,11 +125,12 @@ class NextTaskWidget : GlanceAppWidget() {
             ) {
                 Column {
                     Text(
-                        task?.let { displayTitle(it, tasks) } ?: "NOTHING TO DO",
+                        task?.let { displayTitle(it, tasks) } ?: if (resolved.total > 0) "NOTHING SMALL TO PICK" else "NOTHING TO DO",
                         style = TextStyle(color = ColorProvider(TextColor), fontSize = 17.sp, fontWeight = FontWeight.Bold),
                         maxLines = 2,
                     )
                     val meta = when {
+                        task == null && resolved.total > 0 -> "GIVE SOME TASKS A SIZE OF TINY OR SMALL"
                         task == null -> "TAP TO ADD A TASK"
                         else -> listOfNotNull(
                             if (task.isInProgress) "IN PROGRESS" else null,
@@ -148,11 +145,14 @@ class NextTaskWidget : GlanceAppWidget() {
                     }
                 }
             }
-            if (task != null) {
+            // Shown whenever there is anything startable, so Easy finding nothing small isn't a dead end.
+            if (resolved.total > 0) {
                 Row(GlanceModifier.fillMaxWidth()) {
                     WidgetButton(selection.importantButtonLabel, actionRunCallback<MostImportantAction>(), GlanceModifier.defaultWeight())
-                    Spacer(GlanceModifier.width(6.dp))
-                    WidgetButton("SHUFFLE", actionRunCallback<ShuffleAction>(), GlanceModifier.defaultWeight())
+                    Spacer(GlanceModifier.width(5.dp))
+                    WidgetButton("SHUFFLE", actionRunCallback<ShuffleAction>())
+                    Spacer(GlanceModifier.width(5.dp))
+                    WidgetButton("EASY", actionRunCallback<EasyAction>())
                 }
             }
         }
@@ -160,14 +160,16 @@ class NextTaskWidget : GlanceAppWidget() {
 
     @Composable
     private fun WidgetButton(text: String, onClick: Action, modifier: GlanceModifier = GlanceModifier) {
+        // Fixed height so the buttons line up when "NEXT MOST IMPORTANT" wraps onto two lines.
         Box(
             modifier
+                .height(40.dp)
                 .background(ImageProvider(R.drawable.widget_cell))
                 .clickable(onClick)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text, style = label(TextColor, 11), maxLines = 1)
+            Text(text, style = label(TextColor, 10).copy(textAlign = TextAlign.Center), maxLines = 2)
         }
     }
 
@@ -178,8 +180,6 @@ class NextTaskWidget : GlanceAppWidget() {
         private val AccentColor = Color(0xFFC4001A)
         private val TextColor = Color(0xFFEDE3DC)
         private val DimColor = Color(0xFF8F7C78)
-        val TaskIdParam = ActionParameters.Key<String>("taskId")
-
         /** Read by [MainActivity] to open a task ("" = add a task). */
         val OpenTaskParam = ActionParameters.Key<String>(Reminders.EXTRA_OPEN_TASK)
 
@@ -206,11 +206,9 @@ class ShuffleAction : ActionCallback {
     }
 }
 
-class DoneAction : ActionCallback {
+class EasyAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val id = parameters[NextTaskWidget.TaskIdParam] ?: return
-        TodoGraph.get(context).repository.completeTask(id)
-        val next = NextTask.afterDone(candidates(context), currentSelection(context, glanceId), System.currentTimeMillis(), weights(context))
+        val next = NextTask.pressEasy(candidates(context), currentSelection(context, glanceId), System.currentTimeMillis(), w = weights(context))
         store(context, glanceId, next)
     }
 }

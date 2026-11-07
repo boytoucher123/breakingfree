@@ -23,6 +23,9 @@ class WeightsStore(context: Context) {
             .putFloat(K_SOON_H, w.dueSoonHours.toFloat())
             .putFloat(K_BASE, w.shuffleBase.toFloat())
             .putFloat(K_PROGRESS, w.inProgressBoost.toFloat())
+            .putFloat(K_INTEREST, w.interestBoost.toFloat())
+            .putFloat(K_SIZE, w.sizeEffect.toFloat())
+            .putFloat(K_EASY_SIZE, w.easyMaxSize.toFloat())
             .apply()
         _weights.value = w
     }
@@ -40,6 +43,9 @@ class WeightsStore(context: Context) {
             dueSoonHours = f(K_SOON_H, d.dueSoonHours),
             shuffleBase = f(K_BASE, d.shuffleBase),
             inProgressBoost = f(K_PROGRESS, d.inProgressBoost),
+            interestBoost = f(K_INTEREST, d.interestBoost),
+            sizeEffect = f(K_SIZE, d.sizeEffect),
+            easyMaxSize = f(K_EASY_SIZE, d.easyMaxSize),
         )
     }
 
@@ -53,5 +59,8 @@ class WeightsStore(context: Context) {
         const val K_SOON_H = "due_soon_hours"
         const val K_BASE = "shuffle_base"
         const val K_PROGRESS = "in_progress_boost"
+        const val K_INTEREST = "interest_boost"
+        const val K_SIZE = "size_effect"
+        const val K_EASY_SIZE = "easy_max_size"
     }
 }

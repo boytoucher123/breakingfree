@@ -19,12 +19,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -40,22 +43,26 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
 import kotlin.math.sin
+import kotlin.random.Random
 
 private val CoinRed = Color(0xFFB3000C)
 private val CoinBlack = Color(0xFF0A0606)
 
-/** Proportions, as fractions of the coin's diameter (matching the 100-unit ic_coin vector). */
+/** Proportions, as fractions of the coin's diameter. */
 private const val R_FACE = 0.47f
 private const val HALF_THICK = 0.045f
 
 private const val RIM_TEXT = "NON SERVIAM · ANNO DOMINI MMXXX · MEMENTO MORI · TEMPUS FUGIT · "
+private const val FRONT_TOP = "BREAKING FREE"
+private const val FRONT_BOTTOM = "SOLVE · ET · COAGULA"
 private val NUMERALS = listOf("XII", "I", "II", "III", "IIII", "V", "VI", "VII", "VIII", "IX", "X", "XI")
 
 /**
  * The coin, spinning on its vertical axis like it was just flipped into the air.
  * It's drawn as a short cylinder: the hidden face's offset plus a shaded, reeded edge band
- * give it real thickness as it turns. Front: goat skull on the inverted star. Back: a doomsday
- * dial — Latin around the rim, Roman hours, the Leviathan cross at the centre.
+ * give it real thickness as it turns. Front: goat skull on the inverted star, struck in relief,
+ * lettered around the rim. Back: a doomsday dial — Latin around the rim, Roman hours, the
+ * Leviathan cross at the centre. Both faces are worn: pitted, scratched, darker at the edge.
  */
 @Composable
 fun SpinningCoin(size: Dp, modifier: Modifier = Modifier, periodMs: Int = 5200) {
@@ -64,7 +71,8 @@ fun SpinningCoin(size: Dp, modifier: Modifier = Modifier, periodMs: Int = 5200) 
         animationSpec = infiniteRepeatable(tween(periodMs, easing = LinearEasing), RepeatMode.Restart),
         label = "coin",
     )
-    val front = painterResource(R.drawable.ic_coin)
+    val sigil = painterResource(R.drawable.ic_coin_sigil)
+    val grit = remember { Grit() }
     val context = LocalContext.current
     val paints = remember {
         val serif = runCatching { ResourcesCompat.getFont(context, R.font.cormorant) }.getOrNull() ?: Typeface.SERIF
@@ -125,10 +133,11 @@ fun SpinningCoin(size: Dp, modifier: Modifier = Modifier, periodMs: Int = 5200) 
             scale(scaleX = max(abs(k), 0.001f), scaleY = 1f, pivot = c)
         }) {
             if (frontShowing) {
-                with(front) { draw(Size(d, d)) }
+                drawCoinFront(d, paints, sigil)
             } else {
                 drawCoinBack(d, paints)
             }
+            drawWear(d, grit)
             // Light falls off as it turns away; a sheen slides across as it spins.
             drawCircle(Color.Black.copy(alpha = 0.5f * (1f - abs(k))), radius = r, center = c)
             val sheenX = c.x + r * 1.6f * s
@@ -150,12 +159,188 @@ fun SpinningCoin(size: Dp, modifier: Modifier = Modifier, periodMs: Int = 5200) 
 
 private class BackPaints(val rim: Paint, val numeral: Paint)
 
+/** Dark worn metal rather than flat black: a little warmer where the light catches it. */
+private fun DrawScope.drawField(d: Float) {
+    drawCircle(
+        Brush.radialGradient(
+            listOf(Color(0xFF241211), Color(0xFF130908), CoinBlack),
+            center = Offset(center.x - d * 0.12f, center.y - d * 0.14f),
+            radius = d * 0.62f,
+        ),
+        radius = d * R_FACE, center = center,
+    )
+}
+
+/** The obverse, drawn flat into a d×d box. */
+private fun DrawScope.drawCoinFront(d: Float, paints: BackPaints, sigil: Painter) {
+    val c = center
+    fun rr(f: Float) = d * f
+    drawField(d)
+
+    // Raised lip, lit from the top left.
+    drawCircle(
+        Brush.linearGradient(
+            listOf(Color(0xFFD0342C), CoinRed, Color(0xFF5A0207), Color(0xFF2A0104)),
+            start = Offset(c.x - rr(0.4f), c.y - rr(0.4f)), end = Offset(c.x + rr(0.4f), c.y + rr(0.4f)),
+        ),
+        radius = rr(0.452f), center = c, style = Stroke(rr(0.034f)),
+    )
+    drawCircle(Color.Black.copy(alpha = 0.55f), radius = rr(0.434f), center = c, style = Stroke(rr(0.004f)))
+
+    // Denticles: the toothed border just inside the lip.
+    val teeth = 90
+    for (i in 0 until teeth) {
+        val t = 2 * PI * i / teeth
+        val ct = cos(t).toFloat()
+        val st = sin(t).toFloat()
+        drawLine(
+            CoinRed.copy(alpha = 0.85f),
+            Offset(c.x + rr(0.414f) * ct, c.y + rr(0.414f) * st),
+            Offset(c.x + rr(0.430f) * ct, c.y + rr(0.430f) * st),
+            strokeWidth = rr(0.008f),
+        )
+    }
+
+    // Legend: BREAKING FREE over the top, SOLVE ET COAGULA under the bottom, stars between.
+    val rim = paints.rim
+    rim.textSize = rr(0.056f)
+    rim.letterSpacing = 0.12f
+    val inner = rr(0.352f)          // where the letters' feet sit
+    val cap = rim.textSize * 0.72f
+    val canvas = drawContext.canvas.nativeCanvas
+    fun arc(text: String, top: Boolean) {
+        val r = if (top) inner else inner + cap
+        val path = NativePath().apply {
+            addCircle(c.x, c.y, r, if (top) NativePath.Direction.CW else NativePath.Direction.CCW)
+        }
+        val circumference = (2 * PI * r).toFloat()
+        val width = rim.measureText(text)
+        // Both directions start at 3 o'clock; 12 (CW) and 6 (CCW) are three quarters of the way round.
+        // Shadow first, then the letters, so they read as struck into the metal.
+        rim.color = Color.Black.copy(alpha = 0.7f).toArgb()
+        canvas.drawTextOnPath(text, path, circumference * 0.75f - width / 2f + rr(0.004f), rr(0.004f), rim)
+        rim.color = CoinRed.toArgb()
+        canvas.drawTextOnPath(text, path, circumference * 0.75f - width / 2f, 0f, rim)
+    }
+    arc(FRONT_TOP, top = true)
+    arc(FRONT_BOTTOM, top = false)
+    rim.color = CoinRed.toArgb()
+    rim.letterSpacing = 0f
+    val starR = inner + cap / 2f
+    drawStar(Offset(c.x - starR, c.y), rr(0.022f), CoinRed)
+    drawStar(Offset(c.x + starR, c.y), rr(0.022f), CoinRed)
+
+    drawCircle(CoinRed, radius = rr(0.338f), center = c, style = Stroke(rr(0.007f)))
+    drawCircle(CoinRed.copy(alpha = 0.6f), radius = rr(0.326f), center = c, style = Stroke(rr(0.003f)))
+
+    // A dull ember behind the device.
+    drawCircle(
+        Brush.radialGradient(listOf(CoinRed.copy(alpha = 0.22f), Color.Transparent), center = c, radius = rr(0.3f)),
+        radius = rr(0.3f), center = c,
+    )
+
+    // The device, in relief: a shadow down-right, a highlight up-left, then the red itself.
+    val k = 0.88f
+    fun device(dx: Float, dy: Float, tint: Color?) {
+        withTransform({
+            translate(dx, dy)
+            scale(k, k, pivot = c)
+        }) {
+            with(sigil) { draw(Size(d, d), colorFilter = tint?.let { ColorFilter.tint(it) }) }
+        }
+    }
+    device(rr(0.009f), rr(0.011f), Color.Black.copy(alpha = 0.75f))
+    device(-rr(0.004f), -rr(0.005f), Color(0xFFFF6A55).copy(alpha = 0.55f))
+    device(0f, 0f, null)
+    // Light falls across the relief from the top left.
+    drawCircle(
+        Brush.linearGradient(
+            listOf(Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.25f)),
+            start = Offset(c.x - rr(0.3f), c.y - rr(0.3f)), end = Offset(c.x + rr(0.3f), c.y + rr(0.3f)),
+        ),
+        radius = rr(0.326f), center = c,
+    )
+}
+
+private fun DrawScope.drawStar(at: Offset, r: Float, color: Color) {
+    val path = Path()
+    for (i in 0 until 10) {
+        val rad = if (i % 2 == 0) r else r * 0.42f
+        val t = -PI / 2 + PI * i / 5
+        val x = at.x + rad * cos(t).toFloat()
+        val y = at.y + rad * sin(t).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    drawPath(path, color)
+}
+
+/**
+ * Wear, the same for both faces: pits and flecks, fine scratches, grime collecting towards the
+ * rim and in a few blotches. Positions are fixed (seeded) so it doesn't crawl as the coin turns.
+ */
+private class Grit {
+    private val rnd = Random(666)
+    private fun inDisc(maxR: Float): Pair<Float, Float> {
+        val a = rnd.nextFloat() * 2 * PI.toFloat()
+        val r = maxR * kotlin.math.sqrt(rnd.nextFloat())
+        return r * cos(a) to r * sin(a)
+    }
+    val pits = List(1100) { inDisc(R_FACE * 0.99f) }
+    val flecks = List(320) { inDisc(R_FACE * 0.97f) }
+    val scratches = List(22) {
+        val (x, y) = inDisc(R_FACE * 0.85f)
+        val a = rnd.nextFloat() * PI.toFloat()
+        val len = 0.03f + rnd.nextFloat() * 0.12f
+        floatArrayOf(x, y, a, len, 0.04f + rnd.nextFloat() * 0.07f)
+    }
+    val blotches = List(7) { inDisc(R_FACE * 0.7f).let { (x, y) -> floatArrayOf(x, y, 0.06f + rnd.nextFloat() * 0.1f) } }
+
+    private var cachedD = -1f
+    private var pitPts: List<Offset> = emptyList()
+    private var fleckPts: List<Offset> = emptyList()
+    fun points(d: Float, c: Offset): Pair<List<Offset>, List<Offset>> {
+        if (d != cachedD) {
+            cachedD = d
+            pitPts = pits.map { (x, y) -> Offset(c.x + x * d, c.y + y * d) }
+            fleckPts = flecks.map { (x, y) -> Offset(c.x + x * d, c.y + y * d) }
+        }
+        return pitPts to fleckPts
+    }
+}
+
+private fun DrawScope.drawWear(d: Float, grit: Grit) {
+    val c = center
+    grit.blotches.forEach { (x, y, r) ->
+        val at = Offset(c.x + x * d, c.y + y * d)
+        drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent), at, r * d), r * d, at)
+    }
+    val (pits, flecks) = grit.points(d, c)
+    drawPoints(pits, PointMode.Points, Color.Black.copy(alpha = 0.42f), strokeWidth = max(1f, d * 0.007f), cap = StrokeCap.Round)
+    drawPoints(flecks, PointMode.Points, Color(0xFFFFD6C8).copy(alpha = 0.09f), strokeWidth = max(1f, d * 0.005f), cap = StrokeCap.Round)
+    grit.scratches.forEach { (x, y, a, len, alpha) ->
+        val dx = cos(a) * len * d / 2f
+        val dy = sin(a) * len * d / 2f
+        val mid = Offset(c.x + x * d, c.y + y * d)
+        drawLine(Color(0xFFFFE2D6).copy(alpha = alpha), Offset(mid.x - dx, mid.y - dy), Offset(mid.x + dx, mid.y + dy),
+            strokeWidth = max(0.8f, d * 0.0025f))
+    }
+    // Grime in towards the rim.
+    drawCircle(
+        Brush.radialGradient(
+            0.0f to Color.Transparent, 0.72f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f),
+            center = c, radius = d * R_FACE,
+        ),
+        radius = d * R_FACE, center = c,
+    )
+}
+
 /** The reverse, drawn flat into a d×d box. */
 private fun DrawScope.drawCoinBack(d: Float, paints: BackPaints) {
     val c = center
     fun rr(f: Float) = d * f
 
-    drawCircle(CoinBlack, radius = rr(R_FACE), center = c)
+    drawField(d)
     // Beaded border.
     val beads = 72
     for (i in 0 until beads) {

@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -135,12 +136,20 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
         }
     }
 
+    // Time of day: how alive the lattice is, and the line under the title. Checked every 30s.
+    val mood by produceState(LatticeMoods.now()) {
+        while (true) {
+            delay(30_000)
+            value = LatticeMoods.now()
+        }
+    }
+
     LaunchedEffect(Unit) { vm.shuffle() }
     LaunchedEffect(kept) { if (kept) { delay(2600); kept = false } }
     BackHandler(enabled = mode != MODE_QUESTIONS) { mode = MODE_QUESTIONS }
 
     Box(Modifier.fillMaxSize()) {
-        LatticeBackground(energy.value, ripple.value, resonance, Modifier.fillMaxSize())
+        LatticeBackground(energy.value, ripple.value, resonance, mood.vigor, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier
@@ -166,7 +175,7 @@ fun LatticeScreen(vm: LatticeViewModel = viewModel()) {
                         when (mode) {
                             MODE_ARCHIVE -> "${s.entries.size} reflections"
                             MODE_MANAGE -> "${s.questions.size} threads in the lattice"
-                            else -> "connect. one question at a time."
+                            else -> mood.line
                         }
                     )
                 }

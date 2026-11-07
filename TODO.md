@@ -1,13 +1,13 @@
-# TODO (Todo tab)
+# TODO (Tasks tab)
 
 ## Context-aware weighting for the Shuffle pick
 
 Right now `Recommender.weight()` (app/src/main/java/com/breakingfree/app/todo/domain/Recommender.kt) only
-looks at priority, how close the deadline is and whether the task is in progress (all tunable in
-Todo settings). Planned: let the user's situation change the odds.
+looks at priority, how close the deadline is (scaled by size), whether the task is in progress and
+how interested you are (all tunable in Tasks settings). Planned: let the user's situation change the odds.
 
 ### Time of day
-- Give tasks an **effort** level (e.g. quick / normal / deep work).
+- Tasks now have a **difficulty** and a **size**, which the Easy button already uses. Reuse them here.
 - In the evening (say after 8pm) or very early, multiply the weight of quick/low-effort tasks up
   and deep-work tasks down, since the user is likely to have less energy.
 - Optionally learn the pattern: record when tasks actually get completed (we already store
@@ -32,5 +32,5 @@ Todo settings). Planned: let the user's situation change the odds.
 
 ## Other ideas
 - Recurring tasks.
-- Reminders/notifications for deadlines.
+- Reminders/notifications for deadlines (per-task reminders exist; nothing is tied to the due date yet).
 - Export/import backup (the app is offline-only, so a local JSON backup file would help).

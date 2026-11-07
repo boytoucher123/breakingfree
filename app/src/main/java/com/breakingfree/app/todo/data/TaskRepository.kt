@@ -18,7 +18,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Single entry point for the todo data. Room is the only data source: everything is offline.
+ * Single entry point for the task data. Room is the only data source: everything is offline.
  *
  * Every write also keeps the "finish unfinished tasks" system task in step and then calls
  * [onChanged] (widget redraw, reminder rescheduling).
@@ -138,6 +138,9 @@ class TaskRepository(
         systemKind = systemKind,
         createdAt = createdAt,
         completedAt = completedAt,
+        interest = d.interest.coerceIn(0, 10),
+        size = d.size.level,
+        difficulty = d.difficulty.level,
     )
 
     private fun assemble(tasks: List<LocalTask>, tags: List<LocalTaskTag>, deps: List<LocalTaskDependency>): List<Task> {
@@ -158,6 +161,9 @@ class TaskRepository(
                 reminder = Reminder(ReminderMode.of(t.reminderMode), t.reminderStart, t.reminderEnd, t.reminderDays),
                 system = t.systemKind?.let { k -> SystemKind.entries.firstOrNull { it.name == k } },
                 createdAt = t.createdAt,
+                interest = t.interest,
+                size = TaskSize.of(t.size),
+                difficulty = Difficulty.of(t.difficulty),
             )
         }
     }
